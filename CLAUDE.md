@@ -29,8 +29,15 @@ Os dados ficam no `localStorage` do aparelho, na chave `rachao.placar.v1` (nome 
 Para testar no computador: `.claude/launch.json` tem o servidor local "placar" (`py -m http.server 5173`), e o app abre em `http://localhost:5173/`.
 É um PWA: `manifest.webmanifest` (nome, cores e ícones da pasta `icones/`) e `sw.js` (guarda o app no celular para abrir com internet ruim). Ao mudar arquivos do app, aumente a versão em `CACHE` no `sw.js`.
 
+## Onde está publicado
+- Site: **https://placar-futebas.vercel.app** (projeto `placar-futebas` na equipe `leonardo-rossin` da Vercel).
+- Código: **github.com/leonardorossin/placar-futebas** (público), branch `main`.
+- Para publicar uma mudança: `git commit`, `git push` e `npx.cmd --yes vercel deploy --prod --yes --scope leonardo-rossin` (a Vercel CLI já está logada neste computador).
+- O conector da Vercel no Claude dá 403 para a equipe `leonardo-rossin`; use a Vercel CLI.
+- O Git foi instalado pelo winget em `C:\Program Files\Git\cmd\git.exe`. O login do GitHub precisa de terminal interativo (aba do Terminal do app).
+
 ## Próximos passos
-1. Colocar no ar: Git, GitHub e **Vercel** (já conectada). Deixar o app pronto para "adicionar à tela inicial" do celular (PWA). No iPhone isso evita que o Safari apague os dados de um site que fica 7 dias sem ser aberto.
+1. Ligar o GitHub à Vercel (instalar o app da Vercel no GitHub) para cada `git push` publicar sozinho.
 2. **Supabase:** às vezes outra pessoa marca os jogos quando eu falto. Os dados precisam ficar na internet, com login só para quem marca (eu e mais um). Isso também serve de cópia de segurança.
 
 Plano antigo, para mais tarde: app nativo com React Native/Expo + Supabase. Também tenho um robô de WhatsApp ("adm") que manda avisos no grupo e talvez possa postar os resultados.
