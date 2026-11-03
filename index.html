@@ -323,7 +323,7 @@ function normalizar(st){
   return st;
 }
 
-var S, real = null, demo = false, aba = 'jogo', mesSel = hojeISO().slice(0, 7);
+var S, real = null, demo = false, aba = 'jogo', mesSel = hojeISO().slice(0, 7), qtdNaMao = false;
 var toastTimer = null, wakeLock = null;
 
 try{ S = normalizar(JSON.parse(localStorage.getItem(LS))); }catch(e){ S = estadoVazio(); }
@@ -424,7 +424,11 @@ function txtResumo(dia){
   var l = ['🏆 *Resumo do ' + S.grupo + ' · ' + fmtCurta(dia.data) + '*'];
   if (dia.jogos.length){
     l.push('', '*Jogos*');
-    dia.jogos.forEach(function(j){ l.push(j.n + '. ' + linhaPlacar(j, dia) + (j.fim ? '' : ' (em andamento)')); });
+    dia.jogos.forEach(function(j){
+      var mk = marcadores(j, dia);
+      l.push(j.n + '. ' + linhaPlacar(j, dia) + (j.fim ? '' : ' (em andamento)'));
+      if (mk) l.push('    ⚽ ' + mk);
+    });
   }
   if (cls.some(function(c){ return c.J; })){
     l.push('', '*Classificação*');
@@ -764,17 +768,25 @@ function abrirSortear(){
   if (!todos.length){ closeSheet(); toast('Cadastre os mensalistas na aba Elenco primeiro.'); return; }
   var marc = {}, alguem = false;
   S.dia.times.forEach(function(t){ t.jogadores.forEach(function(p){ marc[p] = 1; alguem = true; }); });
-  var n = S.dia.times.length || 3;
+  /* No 1º sorteio do dia o app sugere quantos times; no "Sortear de novo" mantém o que já está */
+  qtdNaMao = S.dia.times.length > 0;
+  var n = S.dia.times.length || qtdSugerida(todos.length);
   openSheet('<h3>Quem veio hoje?</h3><div class="linha-rot"><span class="rot">Presentes</span><span><button class="btn mini" data-a="marcarTodos" data-v="1">Todos</button> <button class="btn mini" data-a="marcarTodos" data-v="0">Nenhum</button></span></div>' +
     '<div class="checks">' + todos.map(function(p){ return '<label class="ck"><input type="checkbox" value="' + esc(p.id) + '"' + (!alguem || marc[p.id] ? ' checked' : '') + '><span>' + esc(p.nome) + '</span></label>'; }).join('') + '</div>' +
     '<div class="linha-rot"><span class="rot">Quantos times</span><div class="seg" id="segSort">' + [2,3,4].map(function(k){ return '<button type="button" data-a="segSort" data-v="' + k + '" aria-pressed="' + (k === n) + '">' + k + '</button>'; }).join('') + '</div></div>' +
     '<p class="mudo" id="sortInfo"></p><button class="btn prim bloco" data-a="fazerSorteio">' + ICON.dado + 'Sortear</button>', infoSorteio);
 }
+/* Até 15 presentes: 2 times. De 16 a 23: 3 times. 24 ou mais: 4 times. */
+function qtdSugerida(k){ return k <= 15 ? 2 : k <= 23 ? 3 : 4; }
 function infoSorteio(){
-  var b = $('#segSort [aria-pressed="true"]'), n = b ? +b.dataset.v : 3;
   var k = $$('#sheetBody .ck input:checked').length;
+  if (!qtdNaMao){
+    var s = qtdSugerida(k);
+    $$('#segSort button').forEach(function(x){ x.setAttribute('aria-pressed', String(+x.dataset.v === s)); });
+  }
+  var b = $('#segSort [aria-pressed="true"]'), n = b ? +b.dataset.v : 3;
   var por = Math.floor(k / n), extra = k % n;
-  var el = $('#sortInfo'); if (el) el.textContent = pl(k, 'jogador', 'jogadores') + ' · ' + por + (extra ? ' a ' + (por + 1) : '') + ' por time';
+  var el = $('#sortInfo'); if (el) el.textContent = pl(k, 'jogador', 'jogadores') + ' · ' + por + (extra ? ' a ' + (por + 1) : '') + ' por time' + (qtdNaMao ? '' : ' (o app sugeriu ' + n + ' times)');
 }
 function abrirCor(tid){
   var t = timePor(tid); if (!t) return;
@@ -888,7 +900,7 @@ var A = {
     confirmar('Limpar os times?', 'Todo mundo volta para "Sem time". Os jogos de hoje continuam no resumo.', 'confLimpar', 'Limpar os times');
   },
   confLimpar: function(){ var d = S.dia; d.times = []; d.proximo = null; d.desempate = null; d.fila = []; d.emCampo = []; closeSheet(); commit(); },
-  segSort: function(b){ $$('#segSort button').forEach(function(x){ x.setAttribute('aria-pressed', String(x === b)); }); infoSorteio(); },
+  segSort: function(b){ qtdNaMao = true; $$('#segSort button').forEach(function(x){ x.setAttribute('aria-pressed', String(x === b)); }); infoSorteio(); },
   marcarTodos: function(b){ $$('#sheetBody .ck input').forEach(function(i){ i.checked = b.dataset.v === '1'; }); infoSorteio(); },
   fazerSorteio: function(){
     var ids = $$('#sheetBody .ck input:checked').map(function(i){ return i.value; });

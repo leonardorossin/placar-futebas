@@ -10,7 +10,7 @@ Sou o Leo, de Piracicaba (SP). Tenho pouca experiência com código, terminal, G
 - O grupo se chama **Futebas**. Em textos, telas e mensagens do app, use "Futebas", nunca "rachão" ou outro nome genérico.
 - Futebol semanal com um grupo de mensalistas, com grupo no WhatsApp.
 - Cada dia tem cerca de 1 hora de jogo, com 5 ou 6 partidas.
-- Os times do dia (2 a 4 times) são sorteados **no próprio app**, equilibrados pelo nível de cada jogador (Fraco, Médio, Bom). Não tem goleiro fixo.
+- Os times do dia (2 a 4 times) são sorteados **no próprio app**, equilibrados pelo nível de cada jogador (Fraco, Médio, Bom). Não tem goleiro fixo. Os times se chamam Time 1, 2, 3 (a cor é só do colete). O app sugere quantos times pelo número de presentes: até 15 → 2 times (sem rodízio), 16 a 23 → 3, 24 ou mais → 4.
 - Depois do sorteio dá para trocar jogadores de time (atrasos, substituições).
 - Regra de rodízio: o Time 1 começa contra o Time 2. Quem ganha fica, mas **nenhum time joga mais de 2 seguidas**: quem chegou a 2 sai, ganhando ou perdendo. Na prática, depois do 1º jogo quem acabou de entrar sempre fica.
 - Empate no 1º jogo: decidem na hora (par ou ímpar) e o app pergunta "Quem passa?".
