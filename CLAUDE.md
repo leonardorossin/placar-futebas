@@ -26,7 +26,7 @@ Sou o Leo, de Piracicaba (SP). Tenho pouca experiência com código, terminal, G
 - **Resumo:** classificação (vitória vale 3, empate vale 1), artilheiros e jogos do dia, enviar o resumo no grupo, artilharia do mês (com envio no grupo) e encerrar o dia (vai para o histórico).
 - **Elenco:** cadastro dos mensalistas (dá para colar uma lista), nível de cada um e total de gols.
 
-Os dados ficam no `localStorage` do aparelho, na chave `rachao.placar.v1` (nome antigo, mantido de propósito para não perder dados salvos). A leitura de print com IA foi removida (não precisa de chave da API).
+Os dados ficam no `localStorage` do aparelho (e, com login, também no Supabase), na chave `rachao.placar.v1` (nome antigo, mantido de propósito para não perder dados salvos). A leitura de print com IA foi removida (não precisa de chave da API).
 Para testar no computador: `.claude/launch.json` tem o servidor local "placar" (`py -m http.server 5173`), e o app abre em `http://localhost:5173/`.
 Visual: sempre escuro, nas cores do escudo do Futebas (preto, dourado `--accent` e branco). O escudo fica em `icones/escudo.png` (topo do app e boas-vindas) e também é o ícone da tela inicial.
 É um PWA: `manifest.webmanifest` (nome, cores e ícones da pasta `icones/`) e `sw.js` (guarda o app no celular para abrir com internet ruim). Ao mudar arquivos do app, aumente a versão em `CACHE` no `sw.js`.
@@ -38,8 +38,14 @@ Visual: sempre escuro, nas cores do escudo do Futebas (preto, dourado `--accent`
 - O conector da Vercel no Claude dá 403 para a equipe `leonardo-rossin`; use a Vercel CLI.
 - O Git foi instalado pelo winget em `C:\Program Files\Git\cmd\git.exe`. O login do GitHub precisa de terminal interativo (aba do Terminal do app).
 
+## Supabase (dados na internet)
+- Projeto `futebas` (região São Paulo, plano grátis): `https://tfxengujanfxzzrtsxyt.supabase.co`. A chave publishable fica no `index.html` (é pública; a segurança vem das regras RLS). A chave secret/service_role nunca entra no código nem no chat.
+- Tabela `public.futebas`: uma linha só (`id = 'futebas'`) com tudo em `dados` (jsonb), o mesmo objeto do localStorage. RLS: só usuário logado (`authenticated`) lê e escreve. Realtime ligado na tabela.
+- Login por e-mail e senha. Usuários são criados pelo Leo no painel (Authentication → Users); cadastro aberto deve ficar desligado.
+- No app: sem login funciona só no aparelho, como antes. Com login, cada mudança sobe para a internet e os outros celulares recebem na hora. Vale quem mudou por último (`atualizadoEm`). Sem internet, guarda que tem envio pendente (`rachao.placar.nuvem`) e envia quando volta. No 1º login de um aparelho com dados diferentes, o app pergunta qual lista vale.
+- `api/ping.js` + `vercel.json` (cron diário): cutuca o Supabase para o projeto grátis não pausar por falta de uso.
+
 ## Próximos passos
 1. Ligar o GitHub à Vercel (instalar o app da Vercel no GitHub) para cada `git push` publicar sozinho.
-2. **Supabase:** às vezes outra pessoa marca os jogos quando eu falto. Os dados precisam ficar na internet, com login só para quem marca (eu e mais um). Isso também serve de cópia de segurança.
 
 Plano antigo, para mais tarde: app nativo com React Native/Expo + Supabase. Também tenho um robô de WhatsApp ("adm") que manda avisos no grupo e talvez possa postar os resultados.

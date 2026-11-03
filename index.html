@@ -55,7 +55,7 @@ h2{font-size:28px} h3{font-size:24px}
 .escudo-g{width:130px;height:auto;align-self:center;mix-blend-mode:lighten}
 .marca{font-family:var(--f-display);font-weight:800;font-size:30px;line-height:.95;text-transform:uppercase;letter-spacing:.02em;overflow-wrap:anywhere}
 .data{color:var(--muted);font-size:14px;font-weight:600;text-transform:capitalize}
-.selo{font-size:12px;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:6px;white-space:nowrap}
+.selo{appearance:none;background:none;border:0;padding:8px 0;min-height:44px;cursor:pointer;font:600 12px var(--f-body);color:var(--muted);display:flex;align-items:center;gap:6px;white-space:nowrap}
 .selo i{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:none}
 .selo.conta i{background:var(--accent)} .selo.erro i{background:var(--danger)} .selo.exemplo i{background:var(--digit)}
 
@@ -175,7 +175,7 @@ details.dia summary::-webkit-details-marker{display:none}
 
 /* Elenco */
 .bloco-f{display:flex;flex-direction:column;gap:10px}
-input[type=text],textarea,select{font:500 16px var(--f-body);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;min-height:48px;width:100%}
+input[type=text],input[type=email],input[type=password],textarea,select{font:500 16px var(--f-body);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;min-height:48px;width:100%}
 textarea{min-height:160px;resize:vertical}
 select{appearance:auto}
 .linha{display:flex;gap:8px}
@@ -319,6 +319,7 @@ function salvar(){
   if (demo) return;
   S.atualizadoEm = Date.now();
   try{ localStorage.setItem(LS, JSON.stringify(S)); }catch(e){}
+  agendarEnvio();
 }
 function commit(){ salvar(); render(); }
 
@@ -552,8 +553,7 @@ function esconderToast(){ $('#toast').hidden = true; }
 
 /* ---------- telas ---------- */
 function htmlTopo(){
-  var st = demo ? ['exemplo','Exemplo'] : ['local','Salvo neste aparelho'];
-  var h = '<header class="topo"><div class="id"><img class="escudo" src="/icones/escudo.png" alt="Escudo do Futebas" width="54" height="60"><div><div class="marca">' + esc(S.grupo) + '</div><div class="data">' + esc(fmtData(S.dia.data)) + '</div></div></div><div class="selo ' + st[0] + '" id="selo"><i></i><span>' + st[1] + '</span></div></header>';
+  var h = '<header class="topo"><div class="id"><img class="escudo" src="/icones/escudo.png" alt="Escudo do Futebas" width="54" height="60"><div><div class="marca">' + esc(S.grupo) + '</div><div class="data">' + esc(fmtData(S.dia.data)) + '</div></div></div>' + htmlSelo() + '</header>';
   if (demo) h += '<div class="aviso"><span>Dados de exemplo. Nada aqui fica salvo.</span><button class="btn mini" data-a="sairExemplo">Sair do exemplo</button></div>';
   else if (S.dia.data !== hojeISO() && S.dia.jogos.length) h += '<div class="aviso"><span>Esse placar é de ' + fmtCurta(S.dia.data) + '. Encerre aquele dia para começar o de hoje.</span><button class="btn mini" data-a="aba" data-v="resumo">Ver</button></div>';
   return h;
@@ -741,6 +741,9 @@ function vElenco(){
     '<p class="mudo">Quem joga às vezes sem ser mensalista. Ficam guardados com o nível, e no sorteio é só marcar quem veio.</p>' +
     '<form class="linha" data-f="addAv"><input type="text" id="novoAvulso" placeholder="Nome do avulso" autocomplete="off" enterkeyhint="done"><button class="btn prim">Adicionar</button></form>' +
     (av.length ? lista(av) : '') + '</section>';
+  if (!demo) h += '<section class="card"><div class="rot">Conta</div>' + (usuario
+    ? '<p>Conectado como <b>' + esc(usuario.email || '') + '</b>.</p><p class="mudo">Os dados ficam guardados na internet e iguais nos celulares de quem marca os jogos.</p><button class="btn" data-a="conta">Ver sincronização</button>'
+    : '<p class="mudo">Entre com seu e-mail e senha para guardar os dados na internet e deixar tudo igual nos celulares de quem marca os jogos.</p><button class="btn prim" data-a="conta">Entrar</button>') + '</section>';
   if (!demo) h += '<section class="card"><div class="rot">Testar antes</div><p>Quer ver o app funcionando com jogadores de mentira? Nada do que fizer no exemplo fica salvo.</p><button class="btn" data-a="exemplo">Ver com dados de exemplo</button></section>';
   return h;
 }
@@ -1045,6 +1048,8 @@ document.addEventListener('submit', function(e){
     var ja = acharPorNome(cn);
     if (ja){ commit(); abrirChip(ja.id); return; }
     var p = {id:'c' + uid8(), nome:cn, nivel:2}; S.dia.avulsos.push(p); commit(); abrirChip(p.id);
+  } else if (f.dataset.f === 'login'){
+    entrar($('#loginEmail').value.trim(), $('#loginSenha').value);
   } else if (f.dataset.f === 'ren'){
     var pid = f.dataset.p, nn = limparNome($('#renNome').value), pp = pessoa(pid);
     if (pp && nn){
@@ -1062,8 +1067,153 @@ document.addEventListener('change', function(e){
   else if (t.closest && t.closest('#sheetBody .ck')) infoSorteio();
 });
 document.addEventListener('visibilitychange', function(){
-  if (document.visibilityState === 'visible') pedirTelaLigada();
+  if (document.visibilityState === 'visible'){ pedirTelaLigada(); sincronizar(); }
 });
+
+/* ---------- nuvem (Supabase): dados iguais nos celulares de quem marca ----------
+   Uma linha só na tabela "futebas" guarda tudo, o mesmo que fica no localStorage.
+   Vale quem mudou por último (atualizadoEm). Sem internet o app segue normal,
+   guarda que tem envio pendente e manda quando a conexão voltar. */
+var NUVEM_URL = 'https://tfxengujanfxzzrtsxyt.supabase.co';
+var NUVEM_CHAVE = 'sb_publishable_YNuf1AcB_w9WQtpoJRYl5Q_EU_DmRgu'; /* chave pública: a segurança vem das regras do banco */
+var NUVEM_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js';
+var NUVEM_ID = 'futebas', LS_NUVEM = 'rachao.placar.nuvem';
+var sb = null, usuario = null, canal = null, envioTimer = null, ultimaSinc = 0;
+var nuvem = 'ok', pendente = false, escolhaRemota = null, precisaRender = false;
+
+function dadosReais(){ return demo ? real : S; }
+function temDados(st){ return st.jogadores.length || st.dia.jogos.length || st.historico.length; }
+/* Marca deste aparelho: "base" = versão da internet que ele já conhece; sem base, nunca sincronizou */
+function lerMarca(){ try{ return JSON.parse(localStorage.getItem(LS_NUVEM)) || {}; }catch(e){ return {}; } }
+function gravarMarca(base){ try{ localStorage.setItem(LS_NUVEM, JSON.stringify({base:base, pendente:pendente})); }catch(e){} }
+
+function htmlSelo(){
+  var st = demo ? ['exemplo','Exemplo'] : !usuario ? ['local','Salvo neste aparelho']
+    : nuvem === 'enviando' ? ['conta','Sincronizando…'] : nuvem === 'offline' ? ['erro','Sem internet · envia depois'] : ['conta','Sincronizado'];
+  return '<button class="selo ' + st[0] + '" id="selo" data-a="conta"><i></i><span>' + st[1] + '</span></button>';
+}
+function atualizarSelo(){ var el = $('#selo'); if (el) el.outerHTML = htmlSelo(); }
+/* Não redesenha a tela enquanto alguém digita; redesenha quando sair do campo (ou tenta de novo em 3 s) */
+var renderTimer = null;
+function renderSeguro(){
+  clearTimeout(renderTimer);
+  var a = document.activeElement;
+  if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.type !== 'checkbox'){ precisaRender = true; atualizarSelo(); renderTimer = setTimeout(renderSeguro, 3000); return; }
+  precisaRender = false; render();
+}
+document.addEventListener('focusout', function(){ if (precisaRender) setTimeout(renderSeguro, 0); });
+
+/* A biblioteca vem da internet sem travar a abertura do app; se o celular abriu sem sinal, tenta de novo quando a conexão voltar */
+var carregandoLib = false;
+function carregarNuvem(){
+  if (sb || carregandoLib) return;
+  carregandoLib = true;
+  var s = document.createElement('script');
+  s.src = NUVEM_LIB; s.async = true;
+  s.onload = function(){ carregandoLib = false; iniciarNuvem(); };
+  s.onerror = function(){ carregandoLib = false; s.remove(); };
+  document.head.appendChild(s);
+}
+function iniciarNuvem(){
+  if (!window.supabase) return;
+  sb = window.supabase.createClient(NUVEM_URL, NUVEM_CHAVE);
+  sb.auth.onAuthStateChange(function(ev, sessao){
+    var u = sessao ? sessao.user : null, trocou = (u && u.id) !== (usuario && usuario.id);
+    usuario = u;
+    if (!u){ if (canal) sb.removeChannel(canal); canal = null; renderSeguro(); return; }
+    /* setTimeout: a biblioteca pede para não chamar o banco dentro deste aviso */
+    if (trocou){ renderSeguro(); setTimeout(function(){ sincronizar(true); }, 0); }
+  });
+}
+
+async function sincronizar(forcar){
+  if (!sb || !usuario || escolhaRemota) return;
+  if (!forcar && Date.now() - ultimaSinc < 10000) return;
+  ultimaSinc = Date.now();
+  var marca = lerMarca(), local = dadosReais();
+  pendente = !!marca.pendente;
+  nuvem = 'enviando'; atualizarSelo();
+  var r = await sb.from('futebas').select('dados').eq('id', NUVEM_ID).maybeSingle();
+  if (r.error){ nuvem = 'offline'; atualizarSelo(); return; }
+  var remoto = r.data && r.data.dados;
+  if (!remoto){ await enviar(); ligarCanal(); return; } /* internet vazia: este aparelho sobe o que tem */
+  var remT = +remoto.atualizadoEm || 0;
+  if (marca.base === undefined && temDados(local) && remT !== local.atualizadoEm){ perguntarQualUsar(remoto); return; }
+  if (remT > (local.atualizadoEm || 0)) aplicarRemoto(remoto);
+  else if ((local.atualizadoEm || 0) > remT) await enviar();
+  else { pendente = false; gravarMarca(remT); nuvem = 'ok'; atualizarSelo(); }
+  ligarCanal();
+}
+function aplicarRemoto(dados){
+  var st = normalizar(dados);
+  if (demo) real = st; else S = st;
+  try{ localStorage.setItem(LS, JSON.stringify(st)); }catch(e){}
+  pendente = false; gravarMarca(st.atualizadoEm); nuvem = 'ok';
+  if (!jogoAtual()) soltarTela();
+  renderSeguro();
+}
+function agendarEnvio(){
+  if (!sb || !usuario || escolhaRemota) return;
+  pendente = true; gravarMarca(lerMarca().base || 0);
+  clearTimeout(envioTimer); envioTimer = setTimeout(enviar, 700);
+}
+async function enviar(){
+  if (!sb || !usuario) return;
+  clearTimeout(envioTimer);
+  var dados = dadosReais();
+  nuvem = 'enviando'; atualizarSelo();
+  var r = await sb.from('futebas').upsert({id:NUVEM_ID, dados:dados, atualizado_em:new Date().toISOString()});
+  if (r.error){ pendente = true; gravarMarca(lerMarca().base || 0); nuvem = 'offline'; atualizarSelo(); return; }
+  if (dadosReais().atualizadoEm === dados.atualizadoEm) pendente = false; /* se mudou de novo no meio, o próximo envio já está agendado */
+  gravarMarca(dados.atualizadoEm); nuvem = 'ok'; atualizarSelo();
+}
+/* Aviso em tempo real: quando o outro celular muda algo, este recebe na hora */
+function ligarCanal(){
+  if (canal || !sb) return;
+  canal = sb.channel('futebas-dados').on('postgres_changes', {event:'*', schema:'public', table:'futebas', filter:'id=eq.' + NUVEM_ID}, function(m){
+    var d = m.new && m.new.dados;
+    if (d && !escolhaRemota && (+d.atualizadoEm || 0) > (dadosReais().atualizadoEm || 0)) aplicarRemoto(d);
+  }).subscribe();
+}
+
+/* 1º login num aparelho que já tem dados diferentes dos da internet: a pessoa escolhe qual vale */
+function resumoDados(st){ return pl(st.jogadores.length, 'jogador', 'jogadores') + ' · ' + pl(st.historico.length, 'dia guardado', 'dias guardados') + (st.dia.jogos.length ? ' · ' + pl(st.dia.jogos.length, 'jogo hoje', 'jogos hoje') : ''); }
+function perguntarQualUsar(remoto){
+  escolhaRemota = normalizar(remoto);
+  openSheet('<h3>Qual lista vale?</h3><p>Este aparelho e a internet têm dados diferentes. Escolha quais ficam; os outros são substituídos.</p>' +
+    '<div class="card"><div class="rot">Na internet</div><p>' + esc(resumoDados(escolhaRemota)) + '</p><button class="btn prim" data-a="usarNuvem">Usar os da internet</button></div>' +
+    '<div class="card"><div class="rot">Neste aparelho</div><p>' + esc(resumoDados(dadosReais())) + '</p><button class="btn" data-a="usarLocal">Usar os deste aparelho</button></div>');
+}
+A.usarNuvem = function(){ var st = escolhaRemota; escolhaRemota = null; closeSheet(); aplicarRemoto(st); ligarCanal(); toast('Pronto, usando os dados da internet'); };
+A.usarLocal = function(){ escolhaRemota = null; closeSheet(); salvar(); ligarCanal(); toast('Pronto, os dados deste aparelho vão para a internet'); };
+
+function entrar(email, senha){
+  var msg = $('#loginMsg');
+  if (!sb){ msg.textContent = 'Sem internet agora. Tente de novo quando conectar.'; return; }
+  msg.textContent = 'Entrando…';
+  sb.auth.signInWithPassword({email:email, password:senha}).then(function(r){
+    if (r.error){ msg.textContent = /invalid/i.test(r.error.message) ? 'E-mail ou senha incorretos.' : 'Não deu para entrar agora. Confira a internet e tente de novo.'; return; }
+    closeSheet(); toast('Entrou! Sincronizando os dados…');
+  });
+}
+A.conta = function(){
+  if (demo){ toast('No modo exemplo nada é salvo nem sincronizado.'); return; }
+  if (!sb){ toast('Sem internet agora. Os dados seguem salvos neste aparelho.'); return; }
+  if (!usuario){
+    openSheet('<h3>Entrar</h3><p class="mudo">Com login, os dados ficam guardados na internet e iguais nos celulares de quem marca os jogos.</p>' +
+      '<form class="col-btns" data-f="login"><input type="email" id="loginEmail" autocomplete="username" inputmode="email" placeholder="E-mail" required><input type="password" id="loginSenha" autocomplete="current-password" placeholder="Senha" required>' +
+      '<p class="mudo" id="loginMsg" role="status"></p><button class="btn prim bloco">Entrar</button></form><button class="btn bloco" data-a="fechar">Cancelar</button>', function(){ $('#loginEmail').focus(); });
+    return;
+  }
+  var txt = nuvem === 'offline' ? 'Sem internet agora. As mudanças ficam neste aparelho e vão para a internet quando a conexão voltar.' : pendente ? 'Enviando as últimas mudanças…' : 'Tudo guardado na internet.';
+  openSheet('<h3>Sincronização</h3><p>Conectado como <b>' + esc(usuario.email || '') + '</b>.</p><p class="mudo">' + txt + '</p>' +
+    '<button class="btn prim bloco" data-a="sincAgora">Sincronizar agora</button><button class="btn bloco" data-a="sair">Sair desta conta</button><button class="btn bloco" data-a="fechar">Fechar</button>');
+};
+A.sincAgora = function(){ closeSheet(); sincronizar(true); };
+A.sair = function(){ closeSheet(); sb.auth.signOut().then(function(){ toast('Saiu da conta. Os dados continuam neste aparelho.'); }); };
+
+window.addEventListener('online', function(){ if (!sb) carregarNuvem(); else sincronizar(true); });
+setInterval(function(){ if (pendente && usuario && navigator.onLine) enviar(); }, 30000);
 
 /* ---------- início ---------- */
 try{ var salva = localStorage.getItem(LS_ABA); if (salva && /^(jogo|times|resumo|elenco)$/.test(salva)) aba = salva; }catch(e){}
@@ -1071,6 +1221,7 @@ if (!S.jogadores.length && !S.dia.times.length && !S.dia.jogos.length) aba = 'jo
 else if (jogoAtual()) aba = 'jogo';
 render();
 pedirTelaLigada();
+carregarNuvem();
 if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('/sw.js').catch(function(){});
 })();
 </script>
