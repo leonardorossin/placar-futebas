@@ -1,7 +1,7 @@
 /* Guarda o app no celular para abrir mesmo com internet ruim no campo.
    Páginas e arquivos do app: tenta a internet primeiro (pega a versão nova) e usa a cópia guardada se falhar.
    Fontes do Google: usa a cópia guardada, que quase nunca muda. */
-var CACHE = 'futebas-v7';
+var CACHE = 'futebas-v8';
 var ARQUIVOS = ['/', '/manifest.webmanifest', '/icones/escudo.png', '/icones/icone-192.png', '/icones/apple-touch-icon.png'];
 
 self.addEventListener('install', function(e){

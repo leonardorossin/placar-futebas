@@ -131,6 +131,8 @@ h2{font-size:28px} h3{font-size:24px}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
 .chip{appearance:none;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);border-radius:999px;padding:8px 14px;font:600 15px var(--f-body);min-height:40px;cursor:pointer;max-width:100%;overflow-wrap:anywhere}
 .chip.conv{border-style:dashed;background:var(--surface)}
+.chip.avul{border-color:color-mix(in srgb,var(--accent) 55%,var(--line));background:var(--surface)}
+.tipo{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
 .btn-time{justify-content:flex-start}
 .btn-time .colete{width:16px;height:16px}
 .cores{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
@@ -296,7 +298,7 @@ function normalizar(st){
   ['times','avulsos','jogos','fila','emCampo'].forEach(function(k){ if (!Array.isArray(d[k])) d[k] = []; });
   if (!d.desde || typeof d.desde !== 'object') d.desde = {};
   if (d.desempate && !Array.isArray(d.desempate.times)) d.desempate = null;
-  st.jogadores.forEach(ajustarNivel); d.avulsos.forEach(ajustarNivel);
+  st.jogadores.forEach(function(p){ ajustarNivel(p); p.avulso = !!p.avulso; }); d.avulsos.forEach(ajustarNivel);
   d.times.forEach(function(t, i){
     if (!Array.isArray(t.jogadores)) t.jogadores = [];
     if (!CORES[t.cor]) t.cor = CORES_PADRAO[i] || 'preto';
@@ -326,7 +328,13 @@ function pessoa(id){
   for (var k = 0; k < S.dia.avulsos.length; k++) if (S.dia.avulsos[k].id === id) return S.dia.avulsos[k];
   return null;
 }
-function ehAvulso(id){ return S.dia.avulsos.some(function(p){ return p.id === id; }); }
+/* Três tipos de jogador:
+   - mensalista: no elenco (S.jogadores), vem marcado no sorteio;
+   - avulso: no elenco com avulso:true, joga às vezes, vem desmarcado no sorteio;
+   - convidado: só do dia (S.dia.avulsos, nome antigo da chave), adicionado na aba Times. */
+function ehConvidado(id){ return S.dia.avulsos.some(function(p){ return p.id === id; }); }
+function mensalistas(){ return S.jogadores.filter(function(p){ return !p.avulso; }); }
+function avulsosFixos(){ return S.jogadores.filter(function(p){ return p.avulso; }); }
 function nomeDe(id){ var p = pessoa(id); return p ? p.nome : '—'; }
 function timePor(tid, dia){ dia = dia || S.dia; for (var i = 0; i < dia.times.length; i++) if (dia.times[i].id === tid) return dia.times[i]; return null; }
 function nomeTime(tid, dia){ var t = timePor(tid, dia); return t ? t.nome : nomePadrao(tid); }
@@ -427,15 +435,19 @@ function txtResumo(dia){
   return l.join('\n');
 }
 
-/* Elenco com nível, um por linha ("Leo - Bom"). Colado na aba Elenco de outro celular, traz os níveis junto. */
+/* Elenco com nível, um por linha ("Leo - Bom", avulso: "Japa - Médio - avulso").
+   Colado na aba Elenco de outro celular, traz os níveis e os avulsos junto. */
 function txtElenco(){
-  return ordenar(S.jogadores).map(function(p){ return p.nome + ' - ' + NIVEIS[p.nivel]; }).join('\n');
+  function linha(p){ return p.nome + ' - ' + NIVEIS[p.nivel] + (p.avulso ? ' - avulso' : ''); }
+  return ordenar(mensalistas()).map(linha).concat(ordenar(avulsosFixos()).map(linha)).join('\n');
 }
-/* "Leo - Bom" → {nome:'Leo', nivel:3}. Sem nível no fim da linha, nivel fica null. */
+/* "Leo - Bom" → {nome:'Leo', nivel:3, avulso:false}. Sem nível no fim da linha, nivel fica null. */
 function lerLinhaElenco(linha){
+  var a = linha.match(/^(.*?)\s*[-–—:(]\s*avulso\)?$/i);
+  if (a) linha = a[1];
   var m = linha.match(/^(.*?)\s*[-–—:(]\s*(fraco|m[eé]dio|bom)\)?$/i);
   var nv = m ? {fraco:1, medio:2, bom:3}[norm(m[2])] : null;
-  return {nome: m ? m[1].trim() : linha, nivel: nv};
+  return {nome: m ? m[1].trim() : linha.trim(), nivel: nv, avulso: !!a};
 }
 
 function txtArtMes(mes){
@@ -616,7 +628,7 @@ function segNivel(p){
     return '<button data-a="nivel" data-p="' + esc(p.id) + '" data-v="' + n + '" aria-pressed="' + (p.nivel === n) + '">' + NIVEIS[n] + '</button>';
   }).join('') + '</div>';
 }
-function chip(pid){ return '<button class="chip' + (ehAvulso(pid) ? ' conv' : '') + '" data-a="chip" data-p="' + esc(pid) + '">' + esc(nomeDe(pid)) + '</button>'; }
+function chip(pid){ var p = pessoa(pid); return '<button class="chip' + (ehConvidado(pid) ? ' conv' : p && p.avulso ? ' avul' : '') + '" data-a="chip" data-p="' + esc(pid) + '">' + esc(nomeDe(pid)) + '</button>'; }
 
 function vTimes(){
   var d = S.dia;
@@ -627,7 +639,8 @@ function vTimes(){
   }
   var noTime = {};
   d.times.forEach(function(t){ t.jogadores.forEach(function(p){ noTime[p] = 1; }); });
-  var sem = ordenar(todosDoDia().filter(function(p){ return !noTime[p.id]; }));
+  var sem = ordenar(todosDoDia().filter(function(p){ return !noTime[p.id] && !p.avulso; }));
+  var avFora = ordenar(avulsosFixos().filter(function(p){ return !noTime[p.id]; }));
   var j = jogoAtual();
   var h = '<button class="btn bloco" data-a="sortear">' + ICON.dado + 'Sortear de novo</button>';
   if (j) h += '<p class="mudo">Jogo ' + j.n + ' em andamento. Mudanças aqui já valem no jogo.</p>';
@@ -638,7 +651,8 @@ function vTimes(){
       '<div class="chips">' + (t.jogadores.map(chip).join('') || '<span class="mudo">Ninguém ainda. Toque num nome em "Sem time".</span>') + '</div></section>';
   }).join('');
   h += '<section class="bloco-f"><div class="rot">Sem time (' + sem.length + ')</div>' + (sem.length ? '<div class="chips">' + sem.map(function(p){ return chip(p.id); }).join('') + '</div>' : '<p class="mudo">Todo mundo já está num time.</p>') +
-    '<form class="linha" data-f="conv"><input type="text" id="convNome" placeholder="Nome do convidado" autocomplete="off" enterkeyhint="done"><button class="btn">Adicionar</button></form></section>';
+    (avFora.length ? '<div class="rot">Avulsos fora dos times (' + avFora.length + ')</div><div class="chips">' + avFora.map(function(p){ return chip(p.id); }).join('') + '</div>' : '') +
+    '<div class="rot">Convidado de hoje</div><form class="linha" data-f="conv"><input type="text" id="convNome" placeholder="Nome do convidado" autocomplete="off" enterkeyhint="done"><button class="btn">Adicionar</button></form></section>';
   h += '<button class="btn perigo bloco" data-a="limparTimes">Limpar os times</button>';
   return h;
 }
@@ -696,13 +710,21 @@ function vHistorico(){
 function vElenco(){
   var tot = golsTotais();
   var h = '<section class="bloco-f"><label class="rot" for="grupoNome">Nome do grupo</label><input type="text" id="grupoNome" value="' + esc(S.grupo) + '" maxlength="30"></section>';
-  h += '<section class="bloco-f"><div class="rot">Mensalistas (' + S.jogadores.length + ')</div>' +
+  function lista(arr){
+    return '<ul class="lista">' + ordenar(arr).map(function(p){
+      return '<li><div class="pinfo"><button class="nm" data-a="renomear" data-p="' + esc(p.id) + '" aria-label="Editar ' + esc(p.nome) + '">' + esc(p.nome) + '</button><span class="gl">' + pl(tot[p.id] || 0, 'gol', 'gols') + '</span></div>' + segNivel(p) + '<button class="x" data-a="removerJog" data-p="' + esc(p.id) + '" aria-label="Remover ' + esc(p.nome) + '">' + ICON.x + '</button></li>';
+    }).join('') + '</ul>';
+  }
+  var ms = mensalistas(), av = avulsosFixos();
+  h += '<section class="bloco-f"><div class="rot">Mensalistas (' + ms.length + ')</div>' +
     '<form class="linha" data-f="add"><input type="text" id="novoNome" placeholder="Nome ou apelido" autocomplete="off" enterkeyhint="done"><button class="btn prim">Adicionar</button></form>' +
     '<button class="btn-link" data-a="colar">Colar uma lista de nomes</button>' +
-    (S.jogadores.length ? '<ul class="lista">' + ordenar(S.jogadores).map(function(p){
-      return '<li><div class="pinfo"><button class="nm" data-a="renomear" data-p="' + esc(p.id) + '" aria-label="Renomear ' + esc(p.nome) + '">' + esc(p.nome) + '</button><span class="gl">' + pl(tot[p.id] || 0, 'gol', 'gols') + '</span></div>' + segNivel(p) + '<button class="x" data-a="removerJog" data-p="' + esc(p.id) + '" aria-label="Remover ' + esc(p.nome) + '">' + ICON.x + '</button></li>';
-    }).join('') + '</ul><p class="mudo">O nível serve para o sorteio equilibrar os times. Gols somam todos os dias guardados. Toque no nome para corrigir.</p>' : '<p class="mudo">Nenhum mensalista ainda. Digite um nome acima ou cole a lista do grupo.</p>') + '</section>';
-  if (S.jogadores.length) h += '<section class="card"><div class="rot">Levar para outro celular</div><p class="mudo">Copia a lista com o nível de cada um. No outro aparelho, abra a aba Elenco, toque em "Colar uma lista de nomes" e cole.</p>' +
+    (ms.length ? lista(ms) + '<p class="mudo">O nível serve para o sorteio equilibrar os times. Gols somam todos os dias guardados. Toque no nome para corrigir ou mudar para avulso.</p>' : '<p class="mudo">Nenhum mensalista ainda. Digite um nome acima ou cole a lista do grupo.</p>') + '</section>';
+  h += '<section class="bloco-f"><div class="rot">Avulsos (' + av.length + ')</div>' +
+    '<p class="mudo">Quem joga às vezes sem ser mensalista. Ficam guardados com o nível, e no sorteio é só marcar quem veio.</p>' +
+    '<form class="linha" data-f="addAv"><input type="text" id="novoAvulso" placeholder="Nome do avulso" autocomplete="off" enterkeyhint="done"><button class="btn prim">Adicionar</button></form>' +
+    (av.length ? lista(av) : '') + '</section>';
+  if (S.jogadores.length) h += '<section class="card"><div class="rot">Levar para outro celular</div><p class="mudo">Copia a lista com o nível de cada um e quem é avulso. No outro aparelho, abra a aba Elenco, toque em "Colar uma lista de nomes" e cole.</p>' +
     '<div class="duas"><button class="btn" data-a="copiarElenco">Copiar elenco</button><a class="btn" href="' + esc(wa(txtElenco())) + '" target="_blank" rel="noopener">' + ICON.enviar + 'WhatsApp</a></div></section>';
   if (!demo) h += '<section class="card"><div class="rot">Testar antes</div><p>Quer ver o app funcionando com jogadores de mentira? Nada do que fizer no exemplo fica salvo.</p><button class="btn" data-a="exemplo">Ver com dados de exemplo</button></section>';
   return h;
@@ -758,19 +780,24 @@ function abrirChip(pid){
   var h = '<h3>' + esc(nomeDe(pid)) + '</h3>' + (p ? '<div class="rot">Nível</div>' + segNivel(p) : '') + '<div class="rot">' + (atual ? 'Mudar para' : 'Colocar no time') + '</div><div class="col-btns">' +
     d.times.filter(function(t){ return t !== atual; }).map(function(t){ return '<button class="btn btn-time cor-' + t.cor + '" data-a="mover" data-p="' + esc(pid) + '" data-t="' + t.id + '"><span class="colete"></span>' + esc(t.nome) + '</button>'; }).join('') + '</div>';
   if (atual) h += '<button class="btn" data-a="mover" data-p="' + esc(pid) + '" data-t="">Tirar do ' + esc(atual.nome) + '</button>';
-  if (ehAvulso(pid)) h += '<div class="duas"><button class="btn" data-a="virarMensal" data-p="' + esc(pid) + '">Virar mensalista</button><button class="btn perigo" data-a="tirarConv" data-p="' + esc(pid) + '">Remover convidado</button></div>';
+  if (ehConvidado(pid)) h += '<div class="rot">Convidado de hoje</div><div class="duas"><button class="btn" data-a="virarMensal" data-p="' + esc(pid) + '">Virar mensalista</button><button class="btn" data-a="virarMensal" data-v="avulso" data-p="' + esc(pid) + '">Guardar como avulso</button></div><button class="btn perigo" data-a="tirarConv" data-p="' + esc(pid) + '">Remover convidado</button>';
   openSheet(h);
 }
 function abrirSortear(){
-  var todos = ordenar(todosDoDia());
-  if (!todos.length){ closeSheet(); toast('Cadastre os mensalistas na aba Elenco primeiro.'); return; }
+  if (!todosDoDia().length){ closeSheet(); toast('Cadastre os mensalistas na aba Elenco primeiro.'); return; }
   var marc = {}, alguem = false;
   S.dia.times.forEach(function(t){ t.jogadores.forEach(function(p){ marc[p] = 1; alguem = true; }); });
+  /* Sem times ainda: mensalistas e convidados vêm marcados, avulsos desmarcados */
+  function marcado(p){ return alguem ? !!marc[p.id] : !p.avulso; }
+  var grupos = [['Mensalistas', mensalistas(), 'mensal'], ['Avulsos', avulsosFixos(), 'avulso'], ['Convidados de hoje', S.dia.avulsos, 'mensal']].filter(function(g){ return g[1].length; });
+  var nMarc = todosDoDia().filter(marcado).length;
   /* No 1º sorteio do dia o app sugere quantos times; no "Sortear de novo" mantém o que já está */
   qtdNaMao = S.dia.times.length > 0;
-  var n = S.dia.times.length || qtdSugerida(todos.length);
-  openSheet('<h3>Quem veio hoje?</h3><div class="linha-rot"><span class="rot">Presentes</span><span><button class="btn mini" data-a="marcarTodos" data-v="1">Todos</button> <button class="btn mini" data-a="marcarTodos" data-v="0">Nenhum</button></span></div>' +
-    '<div class="checks">' + todos.map(function(p){ return '<label class="ck"><input type="checkbox" value="' + esc(p.id) + '"' + (!alguem || marc[p.id] ? ' checked' : '') + '><span>' + esc(p.nome) + '</span></label>'; }).join('') + '</div>' +
+  var n = S.dia.times.length || qtdSugerida(nMarc);
+  openSheet('<h3>Quem veio hoje?</h3><div class="linha-rot"><span class="mudo">Desmarque quem faltou e marque os avulsos que vieram.</span><span><button class="btn mini" data-a="marcarTodos" data-v="1">Todos os mensalistas</button> <button class="btn mini" data-a="marcarTodos" data-v="0">Nenhum</button></span></div>' +
+    grupos.map(function(g){
+      return '<div class="rot">' + g[0] + ' (' + g[1].length + ')</div><div class="checks">' + ordenar(g[1]).map(function(p){ return '<label class="ck"><input type="checkbox" data-g="' + g[2] + '" value="' + esc(p.id) + '"' + (marcado(p) ? ' checked' : '') + '><span>' + esc(p.nome) + '</span></label>'; }).join('') + '</div>';
+    }).join('') +
     '<div class="linha-rot"><span class="rot">Quantos times</span><div class="seg" id="segSort">' + [2,3,4].map(function(k){ return '<button type="button" data-a="segSort" data-v="' + k + '" aria-pressed="' + (k === n) + '">' + k + '</button>'; }).join('') + '</div></div>' +
     '<p class="mudo" id="sortInfo"></p><button class="btn prim bloco" data-a="fazerSorteio">' + ICON.dado + 'Sortear</button>', infoSorteio);
 }
@@ -890,7 +917,7 @@ var A = {
     S.dia.avulsos = S.dia.avulsos.filter(function(p){ return p.id !== pid; });
     closeSheet(); commit();
   },
-  virarMensal: function(b){ virarMensalistas([b.dataset.p]); closeSheet(); commit(); toast('Agora está no elenco'); },
+  virarMensal: function(b){ var av = b.dataset.v === 'avulso'; virarMensalistas([b.dataset.p], av); closeSheet(); commit(); toast(av ? 'Guardado nos avulsos' : 'Agora está nos mensalistas'); },
   cor: function(b){ abrirCor(b.dataset.t); },
   setCor: function(b){ var t = timePor(b.dataset.t); if (t) t.cor = b.dataset.v; closeSheet(); commit(); },
   limparTimes: function(){
@@ -899,7 +926,12 @@ var A = {
   },
   confLimpar: function(){ var d = S.dia; d.times = []; d.proximo = null; d.desempate = null; d.fila = []; d.emCampo = []; closeSheet(); commit(); },
   segSort: function(b){ qtdNaMao = true; $$('#segSort button').forEach(function(x){ x.setAttribute('aria-pressed', String(x === b)); }); infoSorteio(); },
-  marcarTodos: function(b){ $$('#sheetBody .ck input').forEach(function(i){ i.checked = b.dataset.v === '1'; }); infoSorteio(); },
+  /* "Todos os mensalistas" marca mensalistas e convidados e não mexe nos avulsos; "Nenhum" desmarca tudo */
+  marcarTodos: function(b){
+    var on = b.dataset.v === '1';
+    $$('#sheetBody .ck input').forEach(function(i){ if (!on) i.checked = false; else if (i.dataset.g === 'mensal') i.checked = true; });
+    infoSorteio();
+  },
   fazerSorteio: function(){
     var ids = $$('#sheetBody .ck input:checked').map(function(i){ return i.value; });
     var bt = $('#segSort [aria-pressed="true"]'), n = bt ? +bt.dataset.v : 3;
@@ -925,7 +957,7 @@ var A = {
     closeSheet(); commit(); toast('Dia guardado');
   },
   colar: function(){
-    openSheet('<h3>Colar lista</h3><p class="mudo">Cole os nomes, um por linha. Números e emojis da lista do WhatsApp são ignorados. Se a linha tiver o nível no fim (ex.: Bruno - Bom), ele também é usado.</p><textarea id="colarTxt" placeholder="1. Bruno&#10;2. Caio - Bom&#10;3. Dudu - Fraco"></textarea><button class="btn prim bloco" data-a="confColar">Adicionar nomes</button><button class="btn bloco" data-a="fechar">Cancelar</button>');
+    openSheet('<h3>Colar lista</h3><p class="mudo">Cole os nomes, um por linha. Números e emojis da lista do WhatsApp são ignorados. Se a linha tiver o nível no fim (ex.: Bruno - Bom), ele também é usado. Linhas terminadas em "- avulso" entram nos avulsos.</p><textarea id="colarTxt" placeholder="1. Bruno&#10;2. Caio - Bom&#10;3. Dudu - Fraco"></textarea><button class="btn prim bloco" data-a="confColar">Adicionar nomes</button><button class="btn bloco" data-a="fechar">Cancelar</button>');
   },
   confColar: function(){
     var linhas = ($('#colarTxt').value || '').split(/\n|;/).map(limparNome).filter(Boolean).map(lerLinhaElenco);
@@ -933,8 +965,9 @@ var A = {
     linhas.forEach(function(l){
       if (!l.nome) return;
       var p = S.jogadores.filter(function(x){ return norm(x.nome) === norm(l.nome); })[0];
-      if (!p){ S.jogadores.push({id:'j' + uid8(), nome:l.nome, nivel:l.nivel || 2}); add++; }
-      else if (l.nivel && p.nivel !== l.nivel){ p.nivel = l.nivel; niv++; }
+      if (!p){ S.jogadores.push({id:'j' + uid8(), nome:l.nome, nivel:l.nivel || 2, avulso:l.avulso}); add++; return; }
+      if (l.nivel && p.nivel !== l.nivel){ p.nivel = l.nivel; niv++; }
+      if (l.avulso) p.avulso = true;
     });
     var msg = [add ? pl(add, 'nome adicionado', 'nomes adicionados') : '', niv ? pl(niv, 'nível atualizado', 'níveis atualizados') : ''].filter(Boolean).join(' · ');
     closeSheet(); commit(); toast(msg || 'Esses nomes já estavam no elenco');
@@ -942,7 +975,14 @@ var A = {
   copiarElenco: function(){ copiar(txtElenco(), 'Elenco copiado. Cole na aba Elenco do outro celular.'); },
   renomear: function(b){
     var p = pessoa(b.dataset.p); if (!p) return;
-    openSheet('<h3>Corrigir nome</h3><form class="col-btns" data-f="ren" data-p="' + esc(p.id) + '"><input type="text" id="renNome" value="' + esc(p.nome) + '" maxlength="40" autocomplete="off"><button class="btn prim bloco">Salvar</button></form><button class="btn bloco" data-a="fechar">Cancelar</button>', function(){ var i = $('#renNome'); i.focus(); i.select(); });
+    var noElenco = S.jogadores.indexOf(p) >= 0;
+    openSheet('<h3>Corrigir nome</h3><form class="col-btns" data-f="ren" data-p="' + esc(p.id) + '"><input type="text" id="renNome" value="' + esc(p.nome) + '" maxlength="40" autocomplete="off"><button class="btn prim bloco">Salvar</button></form>' +
+      (noElenco ? '<button class="btn bloco" data-a="trocarTipo" data-p="' + esc(p.id) + '">' + (p.avulso ? 'Passar para mensalista' : 'Passar para avulso') + '</button>' : '') +
+      '<button class="btn bloco" data-a="fechar">Cancelar</button>', function(){ var i = $('#renNome'); i.focus(); i.select(); });
+  },
+  trocarTipo: function(b){
+    var p = pessoa(b.dataset.p); if (!p) return;
+    p.avulso = !p.avulso; closeSheet(); commit(); toast(p.nome + (p.avulso ? ' agora é avulso' : ' agora é mensalista'));
   },
   removerJog: function(b){
     var p = pessoa(b.dataset.p); if (!p) return;
@@ -955,11 +995,13 @@ var A = {
     closeSheet(); commit();
   }
 };
-function virarMensalistas(ids){
+/* Convidado do dia passa para o elenco, como mensalista ou avulso */
+function virarMensalistas(ids, avulso){
   ids.forEach(function(id){
     var p = S.dia.avulsos.filter(function(x){ return x.id === id; })[0];
     if (!p) return;
     S.dia.avulsos = S.dia.avulsos.filter(function(x){ return x.id !== id; });
+    p.avulso = !!avulso;
     if (!S.jogadores.some(function(x){ return norm(x.nome) === norm(p.nome); })) S.jogadores.push(p);
   });
 }
@@ -975,12 +1017,13 @@ document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && !$('
 document.addEventListener('submit', function(e){
   var f = e.target.closest('form[data-f]'); if (!f) return;
   e.preventDefault();
-  if (f.dataset.f === 'add'){
-    var i = $('#novoNome'), nm = limparNome(i.value);
+  if (f.dataset.f === 'add' || f.dataset.f === 'addAv'){
+    var av = f.dataset.f === 'addAv', campo = av ? '#novoAvulso' : '#novoNome', nm = limparNome($(campo).value);
     if (!nm) return;
-    if (S.jogadores.some(function(p){ return norm(p.nome) === norm(nm); })){ toast(nm + ' já está no elenco'); return; }
-    S.jogadores.push({id:'j' + uid8(), nome:nm, nivel:2}); commit();
-    var ni = $('#novoNome'); if (ni) ni.focus();
+    var ja = S.jogadores.filter(function(p){ return norm(p.nome) === norm(nm); })[0];
+    if (ja){ toast(nm + ' já está no elenco como ' + (ja.avulso ? 'avulso' : 'mensalista')); return; }
+    S.jogadores.push({id:'j' + uid8(), nome:nm, nivel:2, avulso:av}); commit();
+    var ni = $(campo); if (ni) ni.focus();
   } else if (f.dataset.f === 'conv'){
     var c = $('#convNome'), cn = limparNome(c.value);
     if (!cn) return;
