@@ -447,13 +447,8 @@ function txtResumo(dia, soMensal){
   return l.join('\n');
 }
 
-/* Elenco com nível, um por linha ("Leo - Bom", avulso: "Japa - Médio - avulso").
-   Colado na aba Elenco de outro celular, traz os níveis e os avulsos junto. */
-function txtElenco(){
-  function linha(p){ return p.nome + ' - ' + NIVEIS[p.nivel] + (p.avulso ? ' - avulso' : ''); }
-  return ordenar(mensalistas()).map(linha).concat(ordenar(avulsosFixos()).map(linha)).join('\n');
-}
-/* "Leo - Bom" → {nome:'Leo', nivel:3, avulso:false}. Sem nível no fim da linha, nivel fica null. */
+/* Lista colada na aba Elenco pode trazer nível e tipo: "Leo - Bom", "Japa - Médio - avulso".
+   "Leo - Bom" → {nome:'Leo', nivel:3, avulso:false}. Sem nível no fim da linha, nivel fica null. */
 function lerLinhaElenco(linha){
   var a = linha.match(/^(.*?)\s*[-–—:(]\s*avulso\)?$/i);
   if (a) linha = a[1];
@@ -746,8 +741,6 @@ function vElenco(){
     '<p class="mudo">Quem joga às vezes sem ser mensalista. Ficam guardados com o nível, e no sorteio é só marcar quem veio.</p>' +
     '<form class="linha" data-f="addAv"><input type="text" id="novoAvulso" placeholder="Nome do avulso" autocomplete="off" enterkeyhint="done"><button class="btn prim">Adicionar</button></form>' +
     (av.length ? lista(av) : '') + '</section>';
-  if (S.jogadores.length) h += '<section class="card"><div class="rot">Levar para outro celular</div><p class="mudo">Copia a lista com o nível de cada um e quem é avulso. No outro aparelho, abra a aba Elenco, toque em "Colar uma lista de nomes" e cole.</p>' +
-    '<div class="duas"><button class="btn" data-a="copiarElenco">Copiar elenco</button><a class="btn" href="' + esc(wa(txtElenco())) + '" target="_blank" rel="noopener">' + ICON.enviar + 'WhatsApp</a></div></section>';
   if (!demo) h += '<section class="card"><div class="rot">Testar antes</div><p>Quer ver o app funcionando com jogadores de mentira? Nada do que fizer no exemplo fica salvo.</p><button class="btn" data-a="exemplo">Ver com dados de exemplo</button></section>';
   return h;
 }
@@ -995,7 +988,6 @@ var A = {
     var msg = [add ? pl(add, 'nome adicionado', 'nomes adicionados') : '', niv ? pl(niv, 'nível atualizado', 'níveis atualizados') : ''].filter(Boolean).join(' · ');
     closeSheet(); commit(); toast(msg || 'Esses nomes já estavam no elenco');
   },
-  copiarElenco: function(){ copiar(txtElenco(), 'Elenco copiado. Cole na aba Elenco do outro celular.'); },
   renomear: function(b){
     var p = pessoa(b.dataset.p); if (!p) return;
     var noElenco = S.jogadores.indexOf(p) >= 0;
