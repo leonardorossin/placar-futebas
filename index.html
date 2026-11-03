@@ -181,13 +181,13 @@ select{appearance:auto}
 .linha{display:flex;gap:8px}
 .linha input{flex:1;min-width:0}
 .lista{list-style:none;margin:0;padding:0;background:var(--surface);border:1px solid var(--line);border-radius:16px}
-.lista li{display:flex;align-items:center;gap:8px;padding:4px 4px 4px 14px;border-bottom:1px solid var(--line);min-height:52px}
+.lista li{display:flex;align-items:center;gap:6px;padding:4px 0 4px 12px;border-bottom:1px solid var(--line);min-height:52px}
 .lista li:last-child{border-bottom:0}
 .pinfo{flex:1;min-width:0;display:flex;flex-direction:column;padding:6px 0}
 .lista .nm{background:none;border:0;color:var(--ink);font:600 16px var(--f-body);text-align:left;padding:2px 0;cursor:pointer;overflow-wrap:anywhere}
 .gl{font-size:14px;font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
 .niv{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;flex:none;align-self:flex-start}
-.niv button{appearance:none;border:0;border-left:1px solid var(--line);background:transparent;color:var(--muted);font:700 13px var(--f-body);min-width:48px;min-height:40px;padding:0 6px;cursor:pointer}
+.niv button{appearance:none;border:0;border-left:1px solid var(--line);background:transparent;color:var(--muted);font:700 12px var(--f-body);min-width:39px;min-height:40px;padding:0 4px;cursor:pointer}
 .niv button:first-child{border-left:0}
 .niv button[aria-pressed="true"]{background:var(--accent);color:var(--accent-i)}
 .lista .niv{align-self:center}
@@ -243,7 +243,7 @@ var LS = 'rachao.placar.v1', LS_ABA = 'rachao.placar.aba';
 var IDS = ['A','B','C','D'];
 var CORES = {laranja:'Laranja',azul:'Azul',amarelo:'Amarelo',roxo:'Roxo',verde:'Verde',vermelho:'Vermelho',preto:'Preto',branco:'Branco'};
 var CORES_PADRAO = ['laranja','azul','amarelo','roxo'];
-var NIVEIS = {1:'Fraco', 2:'Médio', 3:'Bom'};
+var NIVEIS = {1:'Fraco', 2:'Médio', 3:'Bom', 4:'Pro'};
 
 var ICON = {
   bola:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M12 7.4l4.2 3-1.6 4.9H9.4l-1.6-4.9z" fill="currentColor"/></svg>',
@@ -453,8 +453,8 @@ function txtResumo(dia, soMensal){
 function lerLinhaElenco(linha){
   var a = linha.match(/^(.*?)\s*[-–—:(]\s*avulso\)?$/i);
   if (a) linha = a[1];
-  var m = linha.match(/^(.*?)\s*[-–—:(]\s*(fraco|m[eé]dio|bom)\)?$/i);
-  var nv = m ? {fraco:1, medio:2, bom:3}[norm(m[2])] : null;
+  var m = linha.match(/^(.*?)\s*[-–—:(]\s*(fraco|m[eé]dio|bom|pro)\)?$/i);
+  var nv = m ? {fraco:1, medio:2, bom:3, pro:4}[norm(m[2])] : null;
   return {nome: m ? m[1].trim() : linha.trim(), nivel: nv, avulso: !!a};
 }
 
@@ -504,18 +504,51 @@ function montarTimes(n){
 }
 function nivelDe(pid){ var p = pessoa(pid); return p ? p.nivel : 2; }
 function forca(t){ return t.jogadores.reduce(function(s, pid){ return s + nivelDe(pid); }, 0); }
-/* Bons primeiro, depois médios, depois fracos. Cada um vai para o time com menos
-   jogadores; no empate, para o mais fraco até agora; persistindo, sorteia. */
+/* Sorteio em duas etapas:
+   1) Pros primeiro, depois bons, médios e fracos. Cada um vai para o time com menos
+      jogadores; no empate, para o mais fraco até agora; persistindo, sorteia.
+   2) Ajuste fino: troca jogadores de nível diferente entre times enquanto a troca
+      deixar tudo mais parelho (mesma força e Pros/fracos espalhados). O tamanho dos times não muda. */
 function sortearNivelado(ids, n){
   var times = montarTimes(n), soma = times.map(function(){ return 0; }), ordem = [];
-  [3,2,1].forEach(function(nv){ ordem = ordem.concat(embaralhar(ids.filter(function(id){ return nivelDe(id) === nv; }))); });
+  [4,3,2,1].forEach(function(nv){ ordem = ordem.concat(embaralhar(ids.filter(function(id){ return nivelDe(id) === nv; }))); });
   ordem.forEach(function(id){
     var i = embaralhar(times.map(function(t, k){ return k; })).sort(function(a, b){
       return times[a].jogadores.length - times[b].jogadores.length || soma[a] - soma[b];
     })[0];
     times[i].jogadores.push(id); soma[i] += nivelDe(id);
   });
+  ajustarEquilibrio(times);
   return times;
+}
+/* Nota do sorteio (quanto menor, mais parelho): diferença de força pesa mais;
+   depois, diferença na quantidade de Pros e de fracos entre os times. */
+function notaEquilibrio(times){
+  function dif(f){ var v = times.map(f); return Math.max.apply(null, v) - Math.min.apply(null, v); }
+  function qtd(nv){ return function(t){ return t.jogadores.filter(function(pid){ return nivelDe(pid) === nv; }).length; }; }
+  return dif(forca) * 100 + dif(qtd(4)) * 10 + dif(qtd(1));
+}
+function ajustarEquilibrio(times){
+  var nota = notaEquilibrio(times);
+  for (var volta = 0; volta < 60 && nota > 0; volta++){
+    var melhorou = false;
+    var pares = [];
+    times.forEach(function(a, i){ times.forEach(function(b, k){ if (i < k) pares.push([a, b]); }); });
+    embaralhar(pares).forEach(function(par){
+      var a = par[0], b = par[1];
+      embaralhar(a.jogadores.slice()).forEach(function(x){
+        embaralhar(b.jogadores.slice()).forEach(function(y){
+          if (melhorou || nivelDe(x) === nivelDe(y)) return;
+          var ia = a.jogadores.indexOf(x), ib = b.jogadores.indexOf(y);
+          a.jogadores[ia] = y; b.jogadores[ib] = x;
+          var nova = notaEquilibrio(times);
+          if (nova < nota){ nota = nova; melhorou = true; }
+          else { a.jogadores[ia] = x; b.jogadores[ib] = y; }
+        });
+      });
+    });
+    if (!melhorou) break;
+  }
 }
 
 /* ---------- tela ligada durante o jogo ---------- */
@@ -631,7 +664,7 @@ function vProximo(){
 }
 
 function segNivel(p){
-  return '<div class="niv" role="group" aria-label="Nível de ' + esc(p.nome) + '">' + [1,2,3].map(function(n){
+  return '<div class="niv" role="group" aria-label="Nível de ' + esc(p.nome) + '">' + [1,2,3,4].map(function(n){
     return '<button data-a="nivel" data-p="' + esc(p.id) + '" data-v="' + n + '" aria-pressed="' + (p.nivel === n) + '">' + NIVEIS[n] + '</button>';
   }).join('') + '</div>';
 }
@@ -850,7 +883,7 @@ function entrarExemplo(){
   real = S; demo = true;
   var nomes = ['Bruno','Caio','Dudu','Gui','Japa','Lucas','Magrão','Neto','Pedrão','Rafa','Tiago','Vini','Zé','Baiano','Formiga','Juninho','Lipe','Paulinho'];
   S = estadoVazio();
-  S.jogadores = nomes.map(function(n, i){ return {id:'ex' + i, nome:n, nivel:i % 3 + 1}; });
+  S.jogadores = nomes.map(function(n, i){ return {id:'ex' + i, nome:n, nivel:i % 4 + 1}; });
   function ids(a, b){ return S.jogadores.slice(a, b).map(function(p){ return p.id; }); }
   S.dia.times = [{id:'A', nome:'Time 1', cor:'laranja', jogadores:ids(0,6)}, {id:'B', nome:'Time 2', cor:'azul', jogadores:ids(6,12)}, {id:'C', nome:'Time 3', cor:'amarelo', jogadores:ids(12,18)}];
   var t0 = Date.now() - 34 * 60000;
