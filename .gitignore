@@ -1,0 +1,7 @@
+# Arquivos do Windows e do OneDrive
+Thumbs.db
+desktop.ini
+
+# Configurações locais (não vão para o GitHub)
+.vercel
+.claude/settings.local.json
