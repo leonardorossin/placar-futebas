@@ -391,16 +391,17 @@ function jogosDoMes(mes){ return diasDoMes(mes).reduce(function(a, d){ return a.
 
 /* ---------- textos do WhatsApp ---------- */
 function linhaPlacar(j, dia){ var p = placar(j); return nomeTime(j.casa, dia) + ' ' + p.casa + ' x ' + p.fora + ' ' + nomeTime(j.fora, dia); }
-function linhaGol(g, dia){ return '⚽ ' + (g.contra ? ('Gol contra, ponto pro ' + nomeTime(g.time, dia)) : (g.nome + ' (' + nomeTime(g.time, dia) + ')')); }
-function marcadores(j, dia){
+/* Uma linha por time, sem repetir o nome: "Time 1: Leo (3), Dudu, gol contra do Time 2" */
+function golsPorTime(j, dia){
   var por = {};
   j.gols.forEach(function(g){ (por[g.time] = por[g.time] || []).push(g); });
   return [j.casa, j.fora].filter(function(t){ return por[t]; }).map(function(t){
-    var cont = {}, ordem = [];
-    por[t].forEach(function(g){ var k = g.contra ? 'gol contra' : g.nome; if (!cont[k]){ cont[k] = 0; ordem.push(k); } cont[k]++; });
-    return nomeTime(t, dia) + ': ' + ordem.map(function(k){ return cont[k] > 1 ? k + ' ' + cont[k] : k; }).join(', ');
-  }).join(' · ');
+    var cont = {}, ordem = [], contra = 'gol contra do ' + nomeTime(t === j.casa ? j.fora : j.casa, dia);
+    por[t].forEach(function(g){ var k = g.contra ? contra : g.nome; if (!cont[k]){ cont[k] = 0; ordem.push(k); } cont[k]++; });
+    return nomeTime(t, dia) + ': ' + ordem.map(function(k){ return cont[k] > 1 ? k + ' (' + cont[k] + ')' : k; }).join(', ');
+  });
 }
+function marcadores(j, dia){ return golsPorTime(j, dia).join(' · '); }
 function txtGol(j, g){
   return ['⚽ *GOL DO ' + nomeTime(g.time).toUpperCase() + '!*',
     g.contra ? 'Gol contra' : g.nome,
@@ -408,13 +409,13 @@ function txtGol(j, g){
 }
 function txtPlacar(j){
   var l = ['⚽ *' + S.grupo + ' · Jogo ' + j.n + '* ' + (j.fim ? '(encerrado)' : '(em andamento)'), '*' + linhaPlacar(j) + '*'];
-  if (j.gols.length){ l.push(''); j.gols.forEach(function(g){ l.push(linhaGol(g)); }); }
+  if (j.gols.length){ l.push(''); golsPorTime(j).forEach(function(s){ l.push('⚽ ' + s); }); }
   return l.join('\n');
 }
 function txtFim(j){
   var d = S.dia;
   var l = ['🏁 *Fim do jogo ' + j.n + '*', '*' + linhaPlacar(j) + '*'];
-  if (j.gols.length){ l.push(''); j.gols.forEach(function(g){ l.push(linhaGol(g)); }); }
+  if (j.gols.length){ l.push(''); golsPorTime(j).forEach(function(s){ l.push('⚽ ' + s); }); }
   if (j.passou) l.push('', 'Empate. ' + nomeTime(j.passou) + ' passou.');
   if (d.proximo && !jogoAtual()) l.push('', 'Próximo: ' + nomeTime(d.proximo.casa) + ' x ' + nomeTime(d.proximo.fora));
   return l.join('\n');
