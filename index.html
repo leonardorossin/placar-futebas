@@ -462,6 +462,23 @@ function lerLinhaElenco(linha){
   return {nome: m ? m[1].trim() : linha.trim(), nivel: nv, avulso: !!a};
 }
 
+/* Times do dia para o grupo: bolinha da cor do colete, nome do time e os jogadores em ordem.
+   O nível de cada um não vai na mensagem. */
+var EMOJI_COR = {laranja:'🟠', azul:'🔵', amarelo:'🟡', roxo:'🟣', verde:'🟢', vermelho:'🔴', preto:'⚫', branco:'⚪'};
+function txtTimes(){
+  var d = S.dia, data = fmtData(d.data);
+  var l = ['⚽ *Times do ' + S.grupo + '*', data.charAt(0).toUpperCase() + data.slice(1)];
+  d.times.filter(function(t){ return t.jogadores.length; }).forEach(function(t){
+    l.push('', (EMOJI_COR[t.cor] || '⚪') + ' *' + t.nome.toUpperCase() + '*');
+    t.jogadores.map(function(pid){ return nomeTxt(pid); }).sort(function(a, b){ return a.localeCompare(b, 'pt-BR'); }).forEach(function(n){ l.push(n); });
+  });
+  if (!d.jogos.length && d.times.length >= 2){
+    var p = d.proximo || {casa:d.times[0].id, fora:d.times[1].id};
+    l.push('', '▶️ 1º jogo: ' + nomeTime(p.casa) + ' x ' + nomeTime(p.fora));
+  }
+  return l.join('\n');
+}
+
 function txtArtMes(mes, soMensal){
   var art = artilheiros(jogosDoMes(mes), soMensal), med = {1:'🥇', 2:'🥈', 3:'🥉'};
   var l = ['⚽ *Artilharia de ' + fmtMes(mes) + ' · ' + S.grupo + '*' + (soMensal ? '\n_Só mensalistas_' : ''), ''];
@@ -694,6 +711,8 @@ function vTimes(){
       '<input class="tnome" id="tnome-' + t.id + '" data-t="' + t.id + '" value="' + esc(t.nome) + '" maxlength="20" aria-label="Nome do time"><span class="mudo forca">' + t.jogadores.length + ' · força ' + forca(t) + '</span></div>' +
       '<div class="chips">' + (t.jogadores.map(chip).join('') || '<span class="mudo">Ninguém ainda. Toque num nome em "Sem time".</span>') + '</div></section>';
   }).join('');
+  if (d.times.some(function(t){ return t.jogadores.length; })) h += '<div class="col-btns"><a class="btn zap bloco grande" href="' + esc(wa(txtTimes())) + '" target="_blank" rel="noopener">' + ICON.enviar + 'Mandar times no grupo</a>' +
+    '<button class="btn-link" data-a="copiar" data-txt="times">Copiar o texto dos times</button></div>';
   h += '<section class="bloco-f"><div class="rot">Sem time (' + sem.length + ')</div>' + (sem.length ? '<div class="chips">' + sem.map(function(p){ return chip(p.id); }).join('') + '</div>' : '<p class="mudo">Todo mundo já está num time.</p>') +
     (avFora.length ? '<div class="rot">Avulsos fora dos times (' + avFora.length + ')</div><div class="chips">' + avFora.map(function(p){ return chip(p.id); }).join('') + '</div>' : '') +
     '<div class="rot">Convidado de hoje</div><form class="linha" data-f="conv"><input type="text" id="convNome" placeholder="Nome do convidado" autocomplete="off" enterkeyhint="done"><button class="btn">Adicionar</button></form></section>';
@@ -950,6 +969,7 @@ var A = {
   },
   copiar: function(b){
     if (b.dataset.txt === 'placar'){ var j = jogoAtual(); if (j) copiar(txtPlacar(j)); }
+    else if (b.dataset.txt === 'times') copiar(txtTimes());
     else copiar(txtResumo(S.dia, soMensal));
   },
   sortear: function(){ abrirSortear(); },
@@ -1004,7 +1024,7 @@ var A = {
     if (j && (IDS.indexOf(j.casa) >= n || IDS.indexOf(j.fora) >= n)){ $('#sortInfo').textContent = 'Tem um jogo em andamento com um time que sairia. Encerre o jogo antes.'; return; }
     if (ids.length < n){ $('#sortInfo').textContent = 'Marque pelo menos ' + n + ' jogadores.'; return; }
     S.dia.times = sortearNivelado(ids, n); S.dia.proximo = null;
-    closeSheet(); commit(); toast('Times sorteados');
+    closeSheet(); commit(); toast('Times sorteados', '<a href="' + esc(wa(txtTimes())) + '" target="_blank" rel="noopener">Mandar no grupo</a>');
   },
   encerrarDia: function(){
     var j = jogoAtual();
