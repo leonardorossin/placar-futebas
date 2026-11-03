@@ -23,7 +23,7 @@ Sou o Leo, de Piracicaba (SP). Tenho pouca experiência com código, terminal, G
 `index.html` é um app de uma página só (HTML, CSS e JS, sem bibliotecas) feito para o celular. Tem 4 abas:
 - **Jogo:** placar grande. Toco no nome de quem fez o gol e o placar sobe. Tem gol contra, desfazer e apagar gol. Botões abrem o WhatsApp (no celular `whatsapp://send?text=`, que mostra "Enviar para…"; no computador o WhatsApp Web, e o texto também é copiado; o `wa.me` sem número não abre mais a escolha de conversa) com a mensagem do gol, do placar ou do resultado já pronta. No empate do 1º jogo aparece "Quem passa?".
 - **Times:** sorteio nivelado ou montagem na mão. Mostra a "força" de cada time (soma dos níveis). Também troca jogador de time, adiciona convidados e muda a cor do colete.
-- **Resumo:** classificação (vitória vale 3, empate vale 1), artilheiros e jogos do dia, enviar o resumo no grupo, artilharia do mês (com envio no grupo) e encerrar o dia (vai para o histórico).
+- **Resumo:** classificação (vitória vale 3, empate vale 1), artilheiros e jogos do dia, enviar o resumo no grupo, artilharia do mês (com envio no grupo) e encerrar o dia (vai para o histórico). Tocar num jogo ou artilheiro abre os gols para apagar; também dá para apagar um jogo, todos os jogos de hoje ou um dia anterior.
 - **Elenco:** cadastro dos mensalistas (dá para colar uma lista), nível de cada um e total de gols.
 
 Os dados ficam no `localStorage` do aparelho (e, com login, também no Supabase), na chave `rachao.placar.v1` (nome antigo, mantido de propósito para não perder dados salvos). A leitura de print com IA foi removida (não precisa de chave da API).

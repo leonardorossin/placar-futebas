@@ -169,6 +169,13 @@ td.pts{font:800 20px var(--f-display)}
 .rank .quem .nm{white-space:normal}
 .jogos{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
 .jogos li{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 14px;display:flex;flex-direction:column;gap:2px}
+.linha-bt{appearance:none;background:none;border:0;color:inherit;font:inherit;width:100%;text-align:left;cursor:pointer}
+.rank li.cl{padding:0;display:block}
+.rank .linha-bt{display:grid;grid-template-columns:28px 1fr auto;align-items:center;gap:10px;padding:10px 14px}
+.jogos li.cl{padding:0}
+.jogos .linha-bt{display:flex;flex-direction:column;gap:2px;padding:10px 14px;border-radius:12px}
+.linha-bt:active{background:var(--surface-2)}
+.perigo-link{color:var(--danger);align-self:center}
 .jogos .l1{display:flex;gap:10px;align-items:baseline;font-weight:700}
 .jogos .l1 .n{font:800 16px var(--f-display);color:var(--muted)}
 .tag{font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em}
@@ -748,13 +755,14 @@ function vResumo(){
     cls.map(function(c){ var sg = c.GP - c.GC; return '<tr><td class="tm"><span class="colete cor-' + c.cor + '"></span>' + esc(c.nome) + '</td><td class="pts">' + c.P + '</td><td>' + c.J + '</td><td>' + c.V + '</td><td>' + c.E + '</td><td>' + c.D + '</td><td>' + (sg > 0 ? '+' : '') + sg + '</td></tr>'; }).join('') +
     '</tbody></table></div></section>';
   h += '<section class="bloco-f"><div class="linha-rot"><span class="rot">Artilheiros</span>' + filtroRank() + '</div>' + (art.length ? '<ol class="rank">' + art.map(function(a){
-    return '<li><span class="pos">' + a.pos + 'º</span><span class="quem"><span class="colete cor-' + corTime(a.time) + '"></span><span class="nm">' + nomeHtml(a.id, a.nome) + '</span></span><span class="g">' + a.gols + '</span></li>';
+    return '<li class="cl"><button class="linha-bt" data-a="golsDe" data-p="' + esc(a.id) + '"><span class="pos">' + a.pos + 'º</span><span class="quem"><span class="colete cor-' + corTime(a.time) + '"></span><span class="nm">' + nomeHtml(a.id, a.nome) + '</span></span><span class="g">' + a.gols + '</span></button></li>';
   }).join('') + '</ol>' : '<p class="mudo">' + (soMensal ? 'Nenhum gol de mensalista ainda.' : 'Nenhum gol marcado ainda.') + '</p>') + '</section>';
   h += '<section class="bloco-f"><div class="rot">Jogos</div><ul class="jogos">' + d.jogos.map(function(j){
     var mk = marcadores(j);
-    return '<li><div class="l1"><span class="n">' + j.n + '</span><span>' + esc(linhaPlacar(j)) + '</span>' + (j.fim ? '' : '<span class="tag">Agora</span>') + '</div>' + (mk ? '<span class="mudo">' + esc(mk) + '</span>' : '') + '</li>';
-  }).join('') + '</ul></section>';
-  h += '<div class="col-btns"><a class="btn zap" href="' + esc(wa(txtResumo(d, soMensal))) + '" target="_blank" rel="noopener">' + ICON.enviar + 'Mandar resumo no grupo' + rotFiltro() + '</a><button class="btn" data-a="copiar" data-txt="resumo">Copiar o texto do resumo</button><button class="btn perigo" data-a="encerrarDia">Encerrar o dia</button></div>';
+    return '<li class="cl"><button class="linha-bt" data-a="verJogo" data-n="' + j.n + '"><div class="l1"><span class="n">' + j.n + '</span><span>' + esc(linhaPlacar(j)) + '</span>' + (j.fim ? '' : '<span class="tag">Agora</span>') + '</div>' + (mk ? '<span class="mudo">' + esc(mk) + '</span>' : '') + '</button></li>';
+  }).join('') + '</ul><p class="mudo">Toque num jogo ou num artilheiro para corrigir ou apagar gols.</p></section>';
+  h += '<div class="col-btns"><a class="btn zap" href="' + esc(wa(txtResumo(d, soMensal))) + '" target="_blank" rel="noopener">' + ICON.enviar + 'Mandar resumo no grupo' + rotFiltro() + '</a><button class="btn" data-a="copiar" data-txt="resumo">Copiar o texto do resumo</button><button class="btn perigo" data-a="encerrarDia">Encerrar o dia</button>' +
+    '<button class="btn-link perigo-link" data-a="apagarJogos">Apagar todos os jogos de hoje</button></div>';
   return h + vMes() + vHistorico();
 }
 
@@ -788,7 +796,8 @@ function vHistorico(){
     return '<details class="dia"><summary><span>' + esc(fmtData(hd.data)) + '</span><span class="mudo">' + pl(hd.jogos.length, 'jogo', 'jogos') + (cls[0] && cls[0].J ? ' · ' + esc(cls[0].nome) : '') + '</span></summary><div class="dia-in">' +
       (top.length ? '<p>Artilharia: <b>' + top.map(function(a){ return nomeHtml(a.id, a.nome); }).join(', ') + '</b> (' + pl(top[0].gols, 'gol', 'gols') + ')</p>' : '') +
       '<p class="mudo">' + esc(hd.jogos.map(function(j){ return linhaPlacar(j, hd); }).join(' · ')) + '</p>' +
-      '<a class="btn zap" href="' + esc(wa(txtResumo(hd))) + '" target="_blank" rel="noopener">' + ICON.enviar + 'Mandar no grupo</a></div></details>';
+      '<a class="btn zap" href="' + esc(wa(txtResumo(hd))) + '" target="_blank" rel="noopener">' + ICON.enviar + 'Mandar no grupo</a>' +
+      '<button class="btn-link perigo-link" data-a="apagarDia" data-d="' + esc(hd.id) + '">Apagar este dia</button></div></details>';
   }).join('') + '</section>';
 }
 
@@ -853,6 +862,39 @@ function marcarGol(tid, pid){
 }
 function tirarGolId(gid){
   S.dia.jogos.forEach(function(j){ j.gols = j.gols.filter(function(g){ return g.id !== gid; }); });
+}
+/* Depois de apagar jogo(s): renumera e refaz quem está em campo a partir do último jogo que sobrou.
+   O próximo confronto volta a ser escolhido na tela do jogo. */
+function refazerRodizio(){
+  var d = S.dia;
+  d.jogos.forEach(function(j, i){ j.n = i + 1; });
+  d.proximo = null; d.desempate = null; d.desde = {};
+  if (!d.jogos.length){ d.fila = []; d.emCampo = []; return; }
+  var ult = d.jogos[d.jogos.length - 1];
+  d.emCampo = [ult.casa, ult.fora];
+  d.emCampo.forEach(function(t){
+    var k = d.jogos.length - 1;
+    while (k > 0 && (d.jogos[k-1].casa === t || d.jogos[k-1].fora === t)) k--;
+    d.desde[t] = d.jogos[k].n;
+  });
+}
+/* Linha de gol com o X para apagar; "volta" diz qual folha reabrir depois de apagar */
+function liGol(g, extra, volta){
+  return '<li class="lance"><span class="quem"><span class="colete cor-' + corTime(g.time) + '"></span><span class="nm">' + (g.contra ? 'Gol contra' : nomeHtml(g.jogador, g.nome)) + '</span><span class="mudo">' + esc(extra) + '</span></span>' +
+    '<button class="x" data-a="tirarGol" data-g="' + g.id + '" data-volta="' + esc(volta) + '" aria-label="Apagar este gol">' + ICON.x + '</button></li>';
+}
+function folhaJogo(n){
+  var j = S.dia.jogos.filter(function(x){ return x.n === n; })[0];
+  if (!j){ closeSheet(); return; }
+  openSheet('<h3>Jogo ' + j.n + (j.fim ? '' : ' · agora') + '</h3><p class="res">' + esc(linhaPlacar(j)) + '</p>' +
+    (j.gols.length ? '<ul class="lances">' + j.gols.map(function(g){ return liGol(g, nomeTime(g.time), 'jogo:' + j.n); }).join('') + '</ul>' : '<p class="mudo">Nenhum gol neste jogo.</p>') +
+    '<button class="btn perigo bloco" data-a="apagarJogo" data-n="' + j.n + '">Apagar o jogo ' + j.n + '</button><button class="btn bloco" data-a="fechar">Fechar</button>');
+}
+function folhaGolsDe(pid){
+  var lista = [];
+  S.dia.jogos.forEach(function(j){ j.gols.forEach(function(g){ if (g.jogador === pid) lista.push(liGol(g, 'Jogo ' + j.n + ' · ' + nomeTime(g.time), 'pessoa:' + pid)); }); });
+  if (!lista.length){ closeSheet(); return; }
+  openSheet('<h3>Gols de ' + nomeHtml(pid) + ' hoje</h3><ul class="lances">' + lista.join('') + '</ul><button class="btn bloco" data-a="fechar">Fechar</button>');
 }
 function acharGol(gid){
   for (var i = 0; i < S.dia.jogos.length; i++){ var js = S.dia.jogos[i].gols; for (var k = 0; k < js.length; k++) if (js[k].id === gid) return js[k]; }
@@ -954,9 +996,36 @@ var A = {
   desfazerGol: function(b){ tirarGolId(b.dataset.g); esconderToast(); commit(); },
   tirarGol: function(b){
     var g = acharGol(b.dataset.g); if (!g) return;
-    confirmar('Apagar este gol?', (g.contra ? 'Gol contra' : nomeTxt(g.jogador, g.nome)) + ' (' + nomeTime(g.time) + ').', 'confTirarGol', 'Apagar o gol', ' data-g="' + g.id + '"');
+    confirmar('Apagar este gol?', (g.contra ? 'Gol contra' : nomeTxt(g.jogador, g.nome)) + ' (' + nomeTime(g.time) + ').', 'confTirarGol', 'Apagar o gol', ' data-g="' + g.id + '" data-volta="' + esc(b.dataset.volta || '') + '"');
   },
-  confTirarGol: function(b){ tirarGolId(b.dataset.g); closeSheet(); commit(); toast('Gol apagado'); },
+  confTirarGol: function(b){
+    var volta = (b.dataset.volta || '').split(':');
+    tirarGolId(b.dataset.g); closeSheet(); commit(); toast('Gol apagado');
+    if (volta[0] === 'jogo') folhaJogo(+volta[1]);
+    else if (volta[0] === 'pessoa') folhaGolsDe(volta[1]);
+  },
+  verJogo: function(b){ folhaJogo(+b.dataset.n); },
+  golsDe: function(b){ folhaGolsDe(b.dataset.p); },
+  apagarJogo: function(b){
+    var j = S.dia.jogos.filter(function(x){ return x.n === +b.dataset.n; })[0]; if (!j) return;
+    confirmar('Apagar o jogo ' + j.n + '?', linhaPlacar(j) + '. O jogo e os gols dele saem do resumo e da artilharia.', 'confApagarJogo', 'Apagar o jogo', ' data-n="' + j.n + '"');
+  },
+  confApagarJogo: function(b){
+    var n = +b.dataset.n, d = S.dia, eraAtual = jogoAtual() && jogoAtual().n === n;
+    d.jogos = d.jogos.filter(function(x){ return x.n !== n; });
+    refazerRodizio(); if (eraAtual) soltarTela();
+    closeSheet(); commit(); toast('Jogo apagado');
+  },
+  apagarJogos: function(){
+    var n = S.dia.jogos.length; if (!n) return;
+    confirmar('Apagar todos os jogos de hoje?', pl(n, 'jogo', 'jogos') + ' e todos os gols de hoje saem do resumo e da artilharia. Os times continuam montados.', 'confApagarJogos', 'Apagar tudo de hoje');
+  },
+  confApagarJogos: function(){ S.dia.jogos = []; refazerRodizio(); soltarTela(); closeSheet(); commit(); toast('Jogos de hoje apagados'); },
+  apagarDia: function(b){
+    var hd = S.historico.filter(function(x){ return x.id === b.dataset.d; })[0]; if (!hd) return;
+    confirmar('Apagar o dia ' + fmtCurta(hd.data) + '?', pl(hd.jogos.length, 'jogo', 'jogos') + ' e os gols desse dia saem do histórico e da artilharia do mês.', 'confApagarDia', 'Apagar o dia', ' data-d="' + esc(hd.id) + '"');
+  },
+  confApagarDia: function(b){ S.historico = S.historico.filter(function(x){ return x.id !== b.dataset.d; }); closeSheet(); commit(); toast('Dia apagado'); },
   encerrar: function(){
     var j = jogoAtual(); if (!j) return;
     openSheet('<h3>Encerrar o jogo ' + j.n + '?</h3><p class="res">' + esc(linhaPlacar(j)) + '</p><button class="btn prim bloco" data-a="confEncerrar">Encerrar jogo</button><button class="btn bloco" data-a="fechar">Continuar jogando</button>');
