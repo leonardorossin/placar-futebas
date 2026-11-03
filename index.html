@@ -132,7 +132,7 @@ h2{font-size:28px} h3{font-size:24px}
 .chip{appearance:none;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);border-radius:999px;padding:8px 14px;font:600 15px var(--f-body);min-height:40px;cursor:pointer;max-width:100%;overflow-wrap:anywhere}
 .chip.conv{border-style:dashed;background:var(--surface)}
 .chip.avul{border-color:color-mix(in srgb,var(--accent) 55%,var(--line));background:var(--surface)}
-.tipo{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+.av{font-size:.8em;font-weight:600;color:var(--accent);white-space:nowrap;text-transform:none;letter-spacing:0}
 .btn-time{justify-content:flex-start}
 .btn-time .colete{width:16px;height:16px}
 .cores{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
@@ -309,7 +309,7 @@ function normalizar(st){
   return st;
 }
 
-var S, real = null, demo = false, aba = 'jogo', mesSel = hojeISO().slice(0, 7), qtdNaMao = false;
+var S, real = null, demo = false, aba = 'jogo', mesSel = hojeISO().slice(0, 7), qtdNaMao = false, soMensal = false;
 var toastTimer = null, wakeLock = null;
 
 try{ S = normalizar(JSON.parse(localStorage.getItem(LS))); }catch(e){ S = estadoVazio(); }
@@ -336,6 +336,10 @@ function ehConvidado(id){ return S.dia.avulsos.some(function(p){ return p.id ===
 function mensalistas(){ return S.jogadores.filter(function(p){ return !p.avulso; }); }
 function avulsosFixos(){ return S.jogadores.filter(function(p){ return p.avulso; }); }
 function nomeDe(id){ var p = pessoa(id); return p ? p.nome : '—'; }
+/* Avulso aparece sempre com "(avulso)" depois do nome: nas mensagens (nomeTxt) e nas telas (nomeHtml) */
+function ehAvulsoFixo(id){ var p = pessoa(id); return !!(p && p.avulso); }
+function nomeTxt(id, nome){ return (nome || nomeDe(id)) + (ehAvulsoFixo(id) ? ' (avulso)' : ''); }
+function nomeHtml(id, nome){ return esc(nome || nomeDe(id)) + (ehAvulsoFixo(id) ? ' <span class="av">(avulso)</span>' : ''); }
 function timePor(tid, dia){ dia = dia || S.dia; for (var i = 0; i < dia.times.length; i++) if (dia.times[i].id === tid) return dia.times[i]; return null; }
 function nomeTime(tid, dia){ var t = timePor(tid, dia); return t ? t.nome : nomePadrao(tid); }
 function nomePadrao(tid){ return 'Time ' + (IDS.indexOf(tid) + 1); }
@@ -361,10 +365,11 @@ function classificacao(dia){
     return y.P - x.P || y.V - x.V || (y.GP - y.GC) - (x.GP - x.GC) || y.GP - x.GP;
   });
 }
-function artilheiros(jogos){
+/* soMensal: deixa os avulsos de fora (a posição é recalculada só entre mensalistas) */
+function artilheiros(jogos, soMensal){
   var m = {};
   jogos.forEach(function(j){ j.gols.forEach(function(g){
-    if (g.contra || !g.jogador) return;
+    if (g.contra || !g.jogador || (soMensal && ehAvulsoFixo(g.jogador))) return;
     var e = m[g.jogador] || (m[g.jogador] = {id:g.jogador, nome:g.nome, gols:0, time:g.time});
     e.gols++; e.nome = g.nome; e.time = g.time;
   }); });
@@ -383,20 +388,27 @@ function jogosDoMes(mes){ return diasDoMes(mes).reduce(function(a, d){ return a.
 
 /* ---------- textos do WhatsApp ---------- */
 function linhaPlacar(j, dia){ var p = placar(j); return nomeTime(j.casa, dia) + ' ' + p.casa + ' x ' + p.fora + ' ' + nomeTime(j.fora, dia); }
-/* Uma linha por time, sem repetir o nome: "Time 1: Leo (3), Dudu, gol contra do Time 2" */
+/* Uma linha por time, sem repetir o nome: "Time 1: Leo (3), Carlão (avulso, 2), Dudu, gol contra do Time 2" */
 function golsPorTime(j, dia){
   var por = {};
   j.gols.forEach(function(g){ (por[g.time] = por[g.time] || []).push(g); });
   return [j.casa, j.fora].filter(function(t){ return por[t]; }).map(function(t){
     var cont = {}, ordem = [], contra = 'gol contra do ' + nomeTime(t === j.casa ? j.fora : j.casa, dia);
-    por[t].forEach(function(g){ var k = g.contra ? contra : g.nome; if (!cont[k]){ cont[k] = 0; ordem.push(k); } cont[k]++; });
-    return nomeTime(t, dia) + ': ' + ordem.map(function(k){ return cont[k] > 1 ? k + ' (' + cont[k] + ')' : k; }).join(', ');
+    por[t].forEach(function(g){
+      var k = g.contra ? contra : g.nome;
+      if (!cont[k]){ cont[k] = {n:0, avulso:!g.contra && ehAvulsoFixo(g.jogador)}; ordem.push(k); }
+      cont[k].n++;
+    });
+    return nomeTime(t, dia) + ': ' + ordem.map(function(k){
+      var c = cont[k], extra = [c.avulso ? 'avulso' : '', c.n > 1 ? c.n : ''].filter(Boolean).join(', ');
+      return extra ? k + ' (' + extra + ')' : k;
+    }).join(', ');
   });
 }
 function marcadores(j, dia){ return golsPorTime(j, dia).join(' · '); }
 function txtGol(j, g){
   return ['⚽ *GOL DO ' + nomeTime(g.time).toUpperCase() + '!*',
-    g.contra ? 'Gol contra' : g.nome,
+    g.contra ? 'Gol contra' : nomeTxt(g.jogador, g.nome),
     '', '*' + linhaPlacar(j) + '*'].join('\n');
 }
 function txtPlacar(j){
@@ -412,8 +424,8 @@ function txtFim(j){
   if (d.proximo && !jogoAtual()) l.push('', 'Próximo: ' + nomeTime(d.proximo.casa) + ' x ' + nomeTime(d.proximo.fora));
   return l.join('\n');
 }
-function txtResumo(dia){
-  var cls = classificacao(dia), art = artilheiros(dia.jogos);
+function txtResumo(dia, soMensal){
+  var cls = classificacao(dia), art = artilheiros(dia.jogos, soMensal);
   var l = ['🏆 *Resumo do ' + S.grupo + ' · ' + fmtCurta(dia.data) + '*'];
   if (dia.jogos.length){
     l.push('', '*Jogos*');
@@ -429,8 +441,8 @@ function txtResumo(dia){
   }
   if (art.length){
     var med = {1:'🥇', 2:'🥈', 3:'🥉'};
-    l.push('', '*Artilheiros*');
-    art.slice(0, 10).forEach(function(a){ l.push((med[a.pos] || '▪️') + ' ' + a.nome + ': ' + a.gols); });
+    l.push('', '*Artilheiros' + (soMensal ? ' (só mensalistas)' : '') + '*');
+    art.slice(0, 10).forEach(function(a){ l.push((med[a.pos] || '▪️') + ' ' + nomeTxt(a.id, a.nome) + ': ' + a.gols); });
   }
   return l.join('\n');
 }
@@ -450,10 +462,10 @@ function lerLinhaElenco(linha){
   return {nome: m ? m[1].trim() : linha.trim(), nivel: nv, avulso: !!a};
 }
 
-function txtArtMes(mes){
-  var art = artilheiros(jogosDoMes(mes)), med = {1:'🥇', 2:'🥈', 3:'🥉'};
-  var l = ['⚽ *Artilharia de ' + fmtMes(mes) + ' · ' + S.grupo + '*', ''];
-  art.forEach(function(a){ l.push((med[a.pos] || '▪️') + ' ' + a.nome + ': ' + a.gols); });
+function txtArtMes(mes, soMensal){
+  var art = artilheiros(jogosDoMes(mes), soMensal), med = {1:'🥇', 2:'🥈', 3:'🥉'};
+  var l = ['⚽ *Artilharia de ' + fmtMes(mes) + ' · ' + S.grupo + '*' + (soMensal ? '\n_Só mensalistas_' : ''), ''];
+  art.forEach(function(a){ l.push((med[a.pos] || '▪️') + ' ' + nomeTxt(a.id, a.nome) + ': ' + a.gols); });
   return l.join('\n');
 }
 
@@ -576,12 +588,12 @@ function vEmJogo(j){
   function coluna(tid){
     var t = timePor(tid), ids = t ? t.jogadores : [];
     var bts = ids.map(function(pid){
-      return '<button class="jog" data-a="gol" data-t="' + tid + '" data-p="' + esc(pid) + '"><span class="nm">' + esc(nomeDe(pid)) + '</span>' + (golsJ[pid] ? '<span class="qt">' + ICON.bola + golsJ[pid] + '</span>' : '') + '</button>';
+      return '<button class="jog" data-a="gol" data-t="' + tid + '" data-p="' + esc(pid) + '"><span class="nm">' + nomeHtml(pid) + '</span>' + (golsJ[pid] ? '<span class="qt">' + ICON.bola + golsJ[pid] + '</span>' : '') + '</button>';
     }).join('');
     return '<div class="coluna cor-' + corTime(tid) + '"><div class="coluna-topo">' + esc(nomeTime(tid)) + '</div>' + (bts || '<p class="mudo">Sem jogadores. Ajuste na aba Times.</p>') + '</div>';
   }
   var lances = j.gols.length ? '<ul class="lances">' + j.gols.map(function(g){
-    return '<li class="lance"><span class="quem"><span class="colete cor-' + corTime(g.time) + '"></span><span class="nm">' + esc(g.contra ? 'Gol contra' : g.nome) + '</span><span class="mudo">' + esc(nomeTime(g.time)) + '</span></span><button class="x" data-a="tirarGol" data-g="' + g.id + '" aria-label="Apagar este gol">' + ICON.x + '</button></li>';
+    return '<li class="lance"><span class="quem"><span class="colete cor-' + corTime(g.time) + '"></span><span class="nm">' + (g.contra ? 'Gol contra' : nomeHtml(g.jogador, g.nome)) + '</span><span class="mudo">' + esc(nomeTime(g.time)) + '</span></span><button class="x" data-a="tirarGol" data-g="' + g.id + '" aria-label="Apagar este gol">' + ICON.x + '</button></li>';
   }).join('') + '</ul>' : '<p class="mudo">Nenhum gol ainda.</p>';
 
   return '<section class="placar" aria-label="Placar"><div class="placar-top"><span>Jogo ' + j.n + '</span><span>Em andamento</span></div>' +
@@ -628,7 +640,7 @@ function segNivel(p){
     return '<button data-a="nivel" data-p="' + esc(p.id) + '" data-v="' + n + '" aria-pressed="' + (p.nivel === n) + '">' + NIVEIS[n] + '</button>';
   }).join('') + '</div>';
 }
-function chip(pid){ var p = pessoa(pid); return '<button class="chip' + (ehConvidado(pid) ? ' conv' : p && p.avulso ? ' avul' : '') + '" data-a="chip" data-p="' + esc(pid) + '">' + esc(nomeDe(pid)) + '</button>'; }
+function chip(pid){ var p = pessoa(pid); return '<button class="chip' + (ehConvidado(pid) ? ' conv' : p && p.avulso ? ' avul' : '') + '" data-a="chip" data-p="' + esc(pid) + '">' + nomeHtml(pid) + '</button>'; }
 
 function vTimes(){
   var d = S.dia;
@@ -662,37 +674,47 @@ function vResumo(){
   if (!d.jogos.length){
     return '<div class="vazio"><h2>Resumo do dia</h2><p>Os jogos, a classificação e os artilheiros aparecem aqui assim que o primeiro jogo começar.</p></div>' + vMes() + vHistorico();
   }
-  var cls = classificacao(d), art = artilheiros(d.jogos);
+  var cls = classificacao(d), art = artilheiros(d.jogos, soMensal);
   var lider = (cls[0] && cls[0].J) ? cls[0] : null;
   var topo = art.filter(function(a){ return a.pos === 1; });
   var h = '<div class="destaques"><div class="dest"><span class="rot">Time do dia</span>' +
     (lider ? '<span class="v">' + esc(lider.nome) + '</span><span class="s">' + pl(lider.V, 'vitória', 'vitórias') + ' · ' + lider.P + ' pts</span>' : '<span class="v">—</span><span class="s">Nenhum jogo encerrado</span>') +
     '</div><div class="dest"><span class="rot">Artilharia</span>' +
-    (topo.length ? '<span class="v">' + esc(topo.map(function(a){ return a.nome; }).join(', ')) + '</span><span class="s">' + pl(topo[0].gols, 'gol', 'gols') + '</span>' : '<span class="v">—</span><span class="s">Sem gols ainda</span>') + '</div></div>';
+    (topo.length ? '<span class="v">' + topo.map(function(a){ return nomeHtml(a.id, a.nome); }).join(', ') + '</span><span class="s">' + pl(topo[0].gols, 'gol', 'gols') + '</span>' : '<span class="v">—</span><span class="s">Sem gols ainda</span>') + '</div></div>';
   h += '<section class="bloco-f"><div class="rot">Classificação</div><div class="tabela-wrap"><table><thead><tr><th>Time</th><th>P</th><th>J</th><th>V</th><th>E</th><th>D</th><th>SG</th></tr></thead><tbody>' +
     cls.map(function(c){ var sg = c.GP - c.GC; return '<tr><td class="tm"><span class="colete cor-' + c.cor + '"></span>' + esc(c.nome) + '</td><td class="pts">' + c.P + '</td><td>' + c.J + '</td><td>' + c.V + '</td><td>' + c.E + '</td><td>' + c.D + '</td><td>' + (sg > 0 ? '+' : '') + sg + '</td></tr>'; }).join('') +
     '</tbody></table></div></section>';
-  h += '<section class="bloco-f"><div class="rot">Artilheiros</div>' + (art.length ? '<ol class="rank">' + art.map(function(a){
-    return '<li><span class="pos">' + a.pos + 'º</span><span class="quem"><span class="colete cor-' + corTime(a.time) + '"></span><span class="nm">' + esc(a.nome) + '</span></span><span class="g">' + a.gols + '</span></li>';
-  }).join('') + '</ol>' : '<p class="mudo">Nenhum gol marcado ainda.</p>') + '</section>';
+  h += '<section class="bloco-f"><div class="linha-rot"><span class="rot">Artilheiros</span>' + filtroRank() + '</div>' + (art.length ? '<ol class="rank">' + art.map(function(a){
+    return '<li><span class="pos">' + a.pos + 'º</span><span class="quem"><span class="colete cor-' + corTime(a.time) + '"></span><span class="nm">' + nomeHtml(a.id, a.nome) + '</span></span><span class="g">' + a.gols + '</span></li>';
+  }).join('') + '</ol>' : '<p class="mudo">' + (soMensal ? 'Nenhum gol de mensalista ainda.' : 'Nenhum gol marcado ainda.') + '</p>') + '</section>';
   h += '<section class="bloco-f"><div class="rot">Jogos</div><ul class="jogos">' + d.jogos.map(function(j){
     var mk = marcadores(j);
     return '<li><div class="l1"><span class="n">' + j.n + '</span><span>' + esc(linhaPlacar(j)) + '</span>' + (j.fim ? '' : '<span class="tag">Agora</span>') + '</div>' + (mk ? '<span class="mudo">' + esc(mk) + '</span>' : '') + '</li>';
   }).join('') + '</ul></section>';
-  h += '<div class="col-btns"><a class="btn zap" href="' + esc(wa(txtResumo(d))) + '" target="_blank" rel="noopener">' + ICON.enviar + 'Mandar resumo no grupo</a><button class="btn" data-a="copiar" data-txt="resumo">Copiar o texto do resumo</button><button class="btn perigo" data-a="encerrarDia">Encerrar o dia</button></div>';
+  h += '<div class="col-btns"><a class="btn zap" href="' + esc(wa(txtResumo(d, soMensal))) + '" target="_blank" rel="noopener">' + ICON.enviar + 'Mandar resumo no grupo' + rotFiltro() + '</a><button class="btn" data-a="copiar" data-txt="resumo">Copiar o texto do resumo</button><button class="btn perigo" data-a="encerrarDia">Encerrar o dia</button></div>';
   return h + vMes() + vHistorico();
 }
 
+/* Filtro dos rankings: "Todos" ou "Só mensalistas". Vale para a tela e para o que vai pro WhatsApp.
+   Só aparece se tiver avulso cadastrado. */
+function filtroRank(){
+  if (!avulsosFixos().length) return '';
+  return '<div class="seg" role="group" aria-label="Quem entra no ranking">' + [['0', 'Todos'], ['1', 'Só mensalistas']].map(function(o){
+    return '<button data-a="filtroRank" data-v="' + o[0] + '" aria-pressed="' + (soMensal === (o[0] === '1')) + '">' + o[1] + '</button>';
+  }).join('') + '</div>';
+}
+function rotFiltro(){ return avulsosFixos().length ? (soMensal ? ' (só mensalistas)' : ' (com avulsos)') : ''; }
+
 function vMes(){
-  var art = artilheiros(jogosDoMes(mesSel)), dias = diasDoMes(mesSel).length, nome = fmtMes(mesSel);
-  var h = '<section class="bloco-f"><div class="rot">Artilharia do mês</div><div class="mes">' +
+  var art = artilheiros(jogosDoMes(mesSel), soMensal), dias = diasDoMes(mesSel).length, nome = fmtMes(mesSel);
+  var h = '<section class="bloco-f"><div class="linha-rot"><span class="rot">Artilharia do mês</span>' + filtroRank() + '</div><div class="mes">' +
     '<button class="btn mini" data-a="mes" data-v="-1" aria-label="Mês anterior">‹</button><b>' + esc(nome.charAt(0).toUpperCase() + nome.slice(1)) + '</b>' +
     '<button class="btn mini" data-a="mes" data-v="1" aria-label="Próximo mês"' + (mesSel >= hojeISO().slice(0, 7) ? ' disabled' : '') + '>›</button></div>';
-  if (!art.length) return h + '<p class="mudo">Nenhum gol neste mês.</p></section>';
+  if (!art.length) return h + '<p class="mudo">' + (soMensal ? 'Nenhum gol de mensalista neste mês.' : 'Nenhum gol neste mês.') + '</p></section>';
   return h + '<ol class="rank">' + art.map(function(a){
-    return '<li><span class="pos">' + a.pos + 'º</span><span class="quem"><span class="nm">' + esc(a.nome) + '</span></span><span class="g">' + a.gols + '</span></li>';
+    return '<li><span class="pos">' + a.pos + 'º</span><span class="quem"><span class="nm">' + nomeHtml(a.id, a.nome) + '</span></span><span class="g">' + a.gols + '</span></li>';
   }).join('') + '</ol><p class="mudo">' + pl(dias, 'dia', 'dias') + ' de jogo no mês.</p>' +
-    '<a class="btn zap" href="' + esc(wa(txtArtMes(mesSel))) + '" target="_blank" rel="noopener">' + ICON.enviar + 'Mandar artilharia do mês</a></section>';
+    '<a class="btn zap" href="' + esc(wa(txtArtMes(mesSel, soMensal))) + '" target="_blank" rel="noopener">' + ICON.enviar + 'Mandar artilharia do mês' + rotFiltro() + '</a></section>';
 }
 
 function vHistorico(){
@@ -701,7 +723,7 @@ function vHistorico(){
     var cls = classificacao(hd), art = artilheiros(hd.jogos);
     var top = art.filter(function(a){ return a.pos === 1; });
     return '<details class="dia"><summary><span>' + esc(fmtData(hd.data)) + '</span><span class="mudo">' + pl(hd.jogos.length, 'jogo', 'jogos') + (cls[0] && cls[0].J ? ' · ' + esc(cls[0].nome) : '') + '</span></summary><div class="dia-in">' +
-      (top.length ? '<p>Artilharia: <b>' + esc(top.map(function(a){ return a.nome; }).join(', ')) + '</b> (' + pl(top[0].gols, 'gol', 'gols') + ')</p>' : '') +
+      (top.length ? '<p>Artilharia: <b>' + top.map(function(a){ return nomeHtml(a.id, a.nome); }).join(', ') + '</b> (' + pl(top[0].gols, 'gol', 'gols') + ')</p>' : '') +
       '<p class="mudo">' + esc(hd.jogos.map(function(j){ return linhaPlacar(j, hd); }).join(' · ')) + '</p>' +
       '<a class="btn zap" href="' + esc(wa(txtResumo(hd))) + '" target="_blank" rel="noopener">' + ICON.enviar + 'Mandar no grupo</a></div></details>';
   }).join('') + '</section>';
@@ -750,7 +772,7 @@ function marcarGol(tid, pid){
   j.gols.push(g);
   commit(); vibrar();
   var p = placar(j);
-  toast('Gol! ' + (pid ? g.nome : 'Gol contra') + ' · ' + p.casa + ' x ' + p.fora,
+  toast('Gol! ' + (pid ? nomeTxt(pid, g.nome) : 'Gol contra') + ' · ' + p.casa + ' x ' + p.fora,
     '<button data-a="desfazerGol" data-g="' + g.id + '">Desfazer</button><a href="' + esc(wa(txtGol(j, g))) + '" target="_blank" rel="noopener">Mandar no grupo</a>');
   if (pid){
     var b = $('.jog[data-p="' + (window.CSS && CSS.escape ? CSS.escape(pid) : pid) + '"]');
@@ -777,7 +799,7 @@ function abrirChip(pid){
   var d = S.dia, atual = null;
   d.times.forEach(function(t){ if (t.jogadores.indexOf(pid) >= 0) atual = t; });
   var p = pessoa(pid);
-  var h = '<h3>' + esc(nomeDe(pid)) + '</h3>' + (p ? '<div class="rot">Nível</div>' + segNivel(p) : '') + '<div class="rot">' + (atual ? 'Mudar para' : 'Colocar no time') + '</div><div class="col-btns">' +
+  var h = '<h3>' + nomeHtml(pid) + '</h3>' + (p ? '<div class="rot">Nível</div>' + segNivel(p) : '') + '<div class="rot">' + (atual ? 'Mudar para' : 'Colocar no time') + '</div><div class="col-btns">' +
     d.times.filter(function(t){ return t !== atual; }).map(function(t){ return '<button class="btn btn-time cor-' + t.cor + '" data-a="mover" data-p="' + esc(pid) + '" data-t="' + t.id + '"><span class="colete"></span>' + esc(t.nome) + '</button>'; }).join('') + '</div>';
   if (atual) h += '<button class="btn" data-a="mover" data-p="' + esc(pid) + '" data-t="">Tirar do ' + esc(atual.nome) + '</button>';
   if (ehConvidado(pid)) h += '<div class="rot">Convidado de hoje</div><div class="duas"><button class="btn" data-a="virarMensal" data-p="' + esc(pid) + '">Virar mensalista</button><button class="btn" data-a="virarMensal" data-v="avulso" data-p="' + esc(pid) + '">Guardar como avulso</button></div><button class="btn perigo" data-a="tirarConv" data-p="' + esc(pid) + '">Remover convidado</button>';
@@ -860,7 +882,7 @@ var A = {
   desfazerGol: function(b){ tirarGolId(b.dataset.g); esconderToast(); commit(); },
   tirarGol: function(b){
     var g = acharGol(b.dataset.g); if (!g) return;
-    confirmar('Apagar este gol?', (g.contra ? 'Gol contra' : g.nome) + ' (' + nomeTime(g.time) + ').', 'confTirarGol', 'Apagar o gol', ' data-g="' + g.id + '"');
+    confirmar('Apagar este gol?', (g.contra ? 'Gol contra' : nomeTxt(g.jogador, g.nome)) + ' (' + nomeTime(g.time) + ').', 'confTirarGol', 'Apagar o gol', ' data-g="' + g.id + '"');
   },
   confTirarGol: function(b){ tirarGolId(b.dataset.g); closeSheet(); commit(); toast('Gol apagado'); },
   encerrar: function(){
@@ -872,6 +894,7 @@ var A = {
     if (j) toast('Fim do jogo ' + j.n, '<a href="' + esc(wa(txtFim(j))) + '" target="_blank" rel="noopener">Mandar resultado</a>');
   },
   mes: function(b){ mesSel = somarMes(mesSel, +b.dataset.v); render(); },
+  filtroRank: function(b){ soMensal = b.dataset.v === '1'; render(); },
   passa: function(b){
     var d = S.dia, dz = d.desempate; if (!dz) return;
     var j = d.jogos.filter(function(x){ return x.n === dz.jogo; })[0];
@@ -885,7 +908,7 @@ var A = {
   },
   copiar: function(b){
     if (b.dataset.txt === 'placar'){ var j = jogoAtual(); if (j) copiar(txtPlacar(j)); }
-    else copiar(txtResumo(S.dia));
+    else copiar(txtResumo(S.dia, soMensal));
   },
   sortear: function(){ abrirSortear(); },
   manual: function(){ S.dia.times = montarTimes(3); S.dia.proximo = null; commit(); },
