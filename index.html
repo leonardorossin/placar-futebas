@@ -132,6 +132,10 @@ h2{font-size:28px} h3{font-size:24px}
 .chip{appearance:none;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);border-radius:999px;padding:8px 14px;font:600 15px var(--f-body);min-height:40px;cursor:pointer;max-width:100%;overflow-wrap:anywhere}
 .chip.conv{border-style:dashed;background:var(--surface)}
 .chip.avul{border-color:color-mix(in srgb,var(--accent) 55%,var(--line));background:var(--surface)}
+.filtros{display:flex;flex-wrap:wrap;gap:8px}
+.filtros .chip b{font-weight:800;color:var(--muted);margin-left:2px}
+.filtros .chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-i)}
+.filtros .chip[aria-pressed="true"] b{color:var(--accent-i)}
 .av{font-size:.8em;font-weight:600;color:var(--accent);white-space:nowrap;text-transform:none;letter-spacing:0}
 .btn-time{justify-content:flex-start}
 .btn-time .colete{width:16px;height:16px}
@@ -309,7 +313,7 @@ function normalizar(st){
   return st;
 }
 
-var S, real = null, demo = false, aba = 'jogo', mesSel = hojeISO().slice(0, 7), qtdNaMao = false, soMensal = false;
+var S, real = null, demo = false, aba = 'jogo', mesSel = hojeISO().slice(0, 7), qtdNaMao = false, soMensal = false, filtroNivel = 0;
 var toastTimer = null, wakeLock = null;
 
 try{ S = normalizar(JSON.parse(localStorage.getItem(LS))); }catch(e){ S = estadoVazio(); }
@@ -765,15 +769,23 @@ function vElenco(){
       return '<li><div class="pinfo"><button class="nm" data-a="renomear" data-p="' + esc(p.id) + '" aria-label="Editar ' + esc(p.nome) + '">' + esc(p.nome) + '</button><span class="gl">' + pl(tot[p.id] || 0, 'gol', 'gols') + '</span></div>' + segNivel(p) + '<button class="x" data-a="removerJog" data-p="' + esc(p.id) + '" aria-label="Remover ' + esc(p.nome) + '">' + ICON.x + '</button></li>';
     }).join('') + '</ul>';
   }
-  var ms = mensalistas(), av = avulsosFixos();
-  h += '<section class="bloco-f"><div class="rot">Mensalistas (' + ms.length + ')</div>' +
+  /* Filtro por nível: mostra só quem é daquele nível nas duas listas (0 = todos) */
+  function doNivel(arr){ return filtroNivel ? arr.filter(function(p){ return p.nivel === filtroNivel; }) : arr; }
+  function conta(arr, total){ return filtroNivel ? arr.length + ' de ' + total : String(total); }
+  var msT = mensalistas(), avT = avulsosFixos(), ms = doNivel(msT), av = doNivel(avT);
+  if (S.jogadores.length) h += '<section class="bloco-f"><div class="rot">Filtrar por nível</div><div class="filtros">' +
+    [[0, 'Todos', S.jogadores.length]].concat([1,2,3,4].map(function(n){ return [n, NIVEIS[n], S.jogadores.filter(function(p){ return p.nivel === n; }).length]; })).map(function(o){
+      return '<button class="chip" data-a="filtroNivel" data-v="' + o[0] + '" aria-pressed="' + (filtroNivel === o[0]) + '">' + o[1] + ' <b>' + o[2] + '</b></button>';
+    }).join('') + '</div></section>';
+  var vazioFiltro = '<p class="mudo">Ninguém com nível ' + (NIVEIS[filtroNivel] || '') + ' aqui.</p>';
+  h += '<section class="bloco-f"><div class="rot">Mensalistas (' + conta(ms, msT.length) + ')</div>' +
     '<form class="linha" data-f="add"><input type="text" id="novoNome" placeholder="Nome ou apelido" autocomplete="off" enterkeyhint="done"><button class="btn prim">Adicionar</button></form>' +
     '<button class="btn-link" data-a="colar">Colar uma lista de nomes</button>' +
-    (ms.length ? lista(ms) + '<p class="mudo">O nível serve para o sorteio equilibrar os times. Gols somam todos os dias guardados. Toque no nome para corrigir ou mudar para avulso.</p>' : '<p class="mudo">Nenhum mensalista ainda. Digite um nome acima ou cole a lista do grupo.</p>') + '</section>';
-  h += '<section class="bloco-f"><div class="rot">Avulsos (' + av.length + ')</div>' +
+    (ms.length ? lista(ms) + '<p class="mudo">O nível serve para o sorteio equilibrar os times. Gols somam todos os dias guardados. Toque no nome para corrigir ou mudar para avulso.</p>' : msT.length ? vazioFiltro : '<p class="mudo">Nenhum mensalista ainda. Digite um nome acima ou cole a lista do grupo.</p>') + '</section>';
+  h += '<section class="bloco-f"><div class="rot">Avulsos (' + conta(av, avT.length) + ')</div>' +
     '<p class="mudo">Quem joga às vezes sem ser mensalista. Ficam guardados com o nível, e no sorteio é só marcar quem veio.</p>' +
     '<form class="linha" data-f="addAv"><input type="text" id="novoAvulso" placeholder="Nome do avulso" autocomplete="off" enterkeyhint="done"><button class="btn prim">Adicionar</button></form>' +
-    (av.length ? lista(av) : '') + '</section>';
+    (av.length ? lista(av) : avT.length ? vazioFiltro : '') + '</section>';
   if (!demo) h += '<section class="card"><div class="rot">Conta</div>' + (usuario
     ? '<p>Conectado como <b>' + esc(usuario.email || '') + '</b>.</p><p class="mudo">Os dados ficam guardados na internet e iguais nos celulares de quem marca os jogos.</p><button class="btn" data-a="conta">Ver sincronização</button>'
     : '<p class="mudo">Entre com seu e-mail e senha para guardar os dados na internet e deixar tudo igual nos celulares de quem marca os jogos.</p><button class="btn prim" data-a="conta">Entrar</button>') + '</section>';
@@ -924,6 +936,7 @@ var A = {
   },
   mes: function(b){ mesSel = somarMes(mesSel, +b.dataset.v); render(); },
   filtroRank: function(b){ soMensal = b.dataset.v === '1'; render(); },
+  filtroNivel: function(b){ filtroNivel = +b.dataset.v; render(); },
   passa: function(b){
     var d = S.dia, dz = d.desempate; if (!dz) return;
     var j = d.jogos.filter(function(x){ return x.n === dz.jogo; })[0];
