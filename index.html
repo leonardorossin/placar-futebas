@@ -284,7 +284,19 @@ function embaralhar(a){
   }
   return a;
 }
-function wa(txt){ return 'https://wa.me/?text=' + encodeURIComponent(txt); }
+/* Link do WhatsApp com a mensagem pronta. O wa.me sem número não abre mais a escolha de conversa,
+   então no celular usamos o link do próprio aplicativo (abre "Enviar para…") e no computador o WhatsApp Web. */
+function ehCelular(){ return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1); }
+function wa(txt){ var t = encodeURIComponent(txt); return ehCelular() ? 'whatsapp://send?text=' + t : 'https://web.whatsapp.com/send?text=' + t; }
+/* No celular abre o aplicativo na mesma tela (sem aba em branco). No computador também copia o texto:
+   se o WhatsApp não mostrar a escolha de conversa, é só abrir o grupo e colar. */
+document.addEventListener('click', function(e){
+  var a = e.target.closest('a[href^="whatsapp://"], a[href^="https://web.whatsapp.com/"]');
+  if (!a) return;
+  var txt = decodeURIComponent(a.getAttribute('href').split('text=')[1] || '');
+  if (a.getAttribute('href').indexOf('whatsapp://') === 0){ e.preventDefault(); location.href = a.getAttribute('href'); return; }
+  try{ navigator.clipboard.writeText(txt).then(function(){ toast('Texto copiado. Se o WhatsApp não pedir a conversa, abra o grupo e cole (Ctrl+V).'); }, function(){}); }catch(err){}
+});
 function vibrar(){ try{ if (navigator.vibrate) navigator.vibrate(25); }catch(e){} }
 
 /* ---------- estado ---------- */
