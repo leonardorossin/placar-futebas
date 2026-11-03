@@ -27,6 +27,7 @@ Sou o Leo, de Piracicaba (SP). Tenho pouca experiência com código, terminal, G
 
 Os dados ficam no `localStorage` do aparelho, na chave `rachao.placar.v1` (nome antigo, mantido de propósito para não perder dados salvos). A leitura de print com IA foi removida (não precisa de chave da API).
 Para testar no computador: `.claude/launch.json` tem o servidor local "placar" (`py -m http.server 5173`), e o app abre em `http://localhost:5173/`.
+Visual: sempre escuro, nas cores do escudo do Futebas (preto, dourado `--accent` e branco). O escudo fica em `icones/escudo.png` (topo do app e boas-vindas) e também é o ícone da tela inicial.
 É um PWA: `manifest.webmanifest` (nome, cores e ícones da pasta `icones/`) e `sw.js` (guarda o app no celular para abrir com internet ruim). Ao mudar arquivos do app, aumente a versão em `CACHE` no `sw.js`.
 
 ## Onde está publicado
