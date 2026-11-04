@@ -1188,6 +1188,16 @@ var A = {
     var n = +b.dataset.v, d = S.dia, j = jogoAtual();
     if (n === d.times.length) return;
     if (n < d.times.length && j && (IDS.indexOf(j.casa) >= n || IDS.indexOf(j.fora) >= n)){ toast('Encerre o jogo antes de tirar esse time.'); return; }
+    /* Tirar time com gente dentro só depois de confirmar: um toque sem querer no "2" sumia com o Time 3 */
+    var saem = d.times.slice(n).filter(function(t){ return t.jogadores.length; });
+    if (saem.length && !b.dataset.ok){
+      var qtos = saem.reduce(function(s, t){ return s + t.jogadores.length; }, 0);
+      confirmar('Tirar ' + saem.map(function(t){ return t.nome; }).join(' e ') + '?',
+        'Fica com ' + n + ' times. ' + pl(qtos, 'jogador sai', 'jogadores saem') + ' do time e ' + (qtos === 1 ? 'vai' : 'vão') + ' para "Sem time"' + (d.jogos.length ? ', e o rodízio passa a ter só ' + n + ' times.' : '.'),
+        'qtdTimes', 'Sim, ficar com ' + n + ' times', ' data-v="' + n + '" data-ok="1"');
+      return;
+    }
+    closeSheet();
     if (n > d.times.length) d.times = d.times.concat(montarTimes(n).slice(d.times.length));
     else d.times = d.times.slice(0, n);
     d.fila = (d.fila || []).filter(function(t){ return IDS.indexOf(t) < n; });
