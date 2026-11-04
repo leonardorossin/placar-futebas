@@ -20,11 +20,12 @@ Sou o Leo, de Piracicaba (SP). Tenho pouca experiência com código, terminal, G
 - O app **não** é para outras pessoas acompanharem ao vivo. É a ferramenta de quem organiza; o resultado vai para o grupo do WhatsApp.
 
 ## O que já existe
-`index.html` é um app de uma página só (HTML, CSS e JS, sem bibliotecas) feito para o celular. Tem 4 abas:
+`index.html` é um app de uma página só (HTML, CSS e JS, sem bibliotecas) feito para o celular. Tem 5 abas:
 - **Jogo:** placar grande. Toco no nome de quem fez o gol e o placar sobe. Tem gol contra, desfazer e apagar gol. Botões abrem o WhatsApp (no celular `whatsapp://send?text=`, que mostra "Enviar para…"; no computador o WhatsApp Web, e o texto também é copiado; o `wa.me` sem número não abre mais a escolha de conversa) com a mensagem do gol, do placar ou do resultado já pronta. No empate do 1º jogo aparece "Quem passa?".
 - **Times:** sorteio nivelado ou montagem na mão. Mostra a "força" de cada time (soma dos níveis). Também troca jogador de time, adiciona convidados e muda a cor do colete.
 - **Resumo:** classificação (vitória vale 3, empate vale 1), artilheiros e jogos do dia, enviar o resumo no grupo, artilharia do mês (com envio no grupo) e encerrar o dia (vai para o histórico). Tocar num jogo ou artilheiro abre os gols para apagar; também dá para apagar um jogo, todos os jogos de hoje ou um dia anterior.
 - **Elenco:** cadastro dos mensalistas (dá para colar uma lista), nível de cada um e total de gols.
+- **Futebas:** a história do grupo. Criado em 08/04/2024 em Piracicaba (SP). Uniformes (1º pronto em 05/2025, com quem fez e o número da camisa; 2º em decisão), artilheiro de cada mês e artilheiros de todos os tempos. Data, cidade e uniformes são editáveis no app (`S.sobre`, sincroniza). As fotos ficam na pasta `fotos/` (`uniforme-N.jpg` e `uniforme-N-molde.jpg`) e são ligadas em `FOTOS_UNIF` no `index.html`, pelo número do uniforme. Foto nova = arquivo novo + entrada em `FOTOS_UNIF`.
 
 Os dados ficam no `localStorage` do aparelho (e, com login, também no Supabase), na chave `rachao.placar.v1` (nome antigo, mantido de propósito para não perder dados salvos). A leitura de print com IA foi removida (não precisa de chave da API).
 Para testar no computador: `.claude/launch.json` tem o servidor local "placar" (`py -m http.server 5173`), e o app abre em `http://localhost:5173/`.

@@ -206,14 +206,33 @@ select{appearance:auto}
 .mes{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .mes b{font-size:17px}
 
+/* Futebas (história do grupo) */
+.capa{align-items:center;text-align:center;gap:8px;padding:20px 16px}
+.capa h2{font-size:40px;color:var(--accent)}
+.unif{gap:14px}
+.unif-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.unif-foto{appearance:none;border:0;padding:0;background:#fff;border-radius:12px;overflow:hidden;cursor:zoom-in;display:block;width:100%}
+.unif-foto img{display:block;width:100%;height:auto}
+.unif-vazio{border:1px dashed var(--line);border-radius:12px;min-height:150px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--muted);font-size:14px;padding:16px;text-align:center}
+.unif-vazio svg{width:48px;height:48px;color:var(--accent)}
+.elenco-u{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.elenco-u li{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--surface-2);border-radius:10px;padding:8px 12px;min-height:44px;min-width:0}
+.elenco-u .nm{font-weight:600;overflow-wrap:anywhere;min-width:0}
+.elenco-u .num{font:800 22px/1 var(--f-display);color:var(--accent);font-variant-numeric:tabular-nums;white-space:nowrap}
+.campeoes{list-style:none;margin:0;padding:0;background:var(--surface);border:1px solid var(--line);border-radius:16px}
+.campeoes li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.campeoes li:last-child{border-bottom:0}
+.campeoes .m{font-size:14px;color:var(--muted);text-transform:capitalize}
+.campeoes .q{font-weight:700;text-align:right}
+
 .vazio{padding:20px;border:1px dashed var(--line);border-radius:16px;display:flex;flex-direction:column;gap:14px;background:var(--surface)}
 .passos{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:6px}
 .passos li::marker{font-family:var(--f-display);font-weight:800;color:var(--accent)}
 
 /* Abas */
 .nav{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:max(8px, env(safe-area-inset-left,0px));padding-right:max(8px, env(safe-area-inset-right,0px))}
-.nav-in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
-.nav button{appearance:none;border:0;background:none;color:var(--muted);font:700 12px var(--f-body);letter-spacing:.04em;text-transform:uppercase;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px 8px;min-height:62px;cursor:pointer}
+.nav-in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr)}
+.nav button{appearance:none;border:0;background:none;color:var(--muted);font:700 11px var(--f-body);letter-spacing:.03em;text-transform:uppercase;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px 8px;min-height:62px;cursor:pointer}
 .nav button[aria-current="page"]{color:var(--accent)}
 .nav svg{width:24px;height:24px}
 
@@ -240,6 +259,7 @@ select{appearance:auto}
     <button data-a="aba" data-v="times"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 3 3 6.2l2.2 4.3 2.3-1.1V21h9V9.4l2.3 1.1L21 6.2 15.5 3c-.6 1.7-1.9 2.7-3.5 2.7S9.1 4.7 8.5 3z"/></svg>Times</button>
     <button data-a="aba" data-v="resumo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4v1.5A3.5 3.5 0 0 0 7.5 11M17 6h3v1.5A3.5 3.5 0 0 1 16.5 11M12 14v4M8 21h8M9.5 18h5"/></svg>Resumo</button>
     <button data-a="aba" data-v="elenco"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.4 2.7-6 6-6s6 2.6 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M15.8 14.1c2.9.4 5.2 2.7 5.2 5.9"/></svg>Elenco</button>
+    <button data-a="aba" data-v="futebas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.8 4.5 5.6v6c0 4.6 3.1 8 7.5 9.6 4.4-1.6 7.5-5 7.5-9.6v-6z"/><path d="m12 8 1.3 2.6 2.9.4-2.1 2 .5 2.9-2.6-1.4-2.6 1.4.5-2.9-2.1-2 2.9-.4z" fill="currentColor" stroke="none"/></svg>Futebas</button>
   </div>
 </nav>
 
@@ -309,7 +329,34 @@ function vibrar(){ try{ if (navigator.vibrate) navigator.vibrate(25); }catch(e){
 /* ---------- estado ---------- */
 function novoDia(){ return {data: hojeISO(), times: [], avulsos: [], jogos: [], fila: [], emCampo: [], desde: {}, proximo: null, desempate: null}; }
 function ajustarNivel(p){ p.nivel = NIVEIS[p.nivel] ? +p.nivel : 2; }
-function estadoVazio(){ return {v:1, grupo:'Futebas', jogadores:[], dia: novoDia(), historico:[], atualizadoEm:0}; }
+function estadoVazio(){ return {v:1, grupo:'Futebas', jogadores:[], dia: novoDia(), historico:[], atualizadoEm:0, sobre: sobrePadrao()}; }
+/* Aba Futebas: a história do grupo. Começa com o que o Leo passou; dá para editar no app.
+   Uniforme: num (1º, 2º…), quando (AAAA-MM), situação, observação e quem fez (nome e número da camisa). */
+var SITUACOES = {pronto:'Pronto', producao:'Em produção', decisao:'Em decisão'};
+/* Fotos ficam na pasta fotos/ do site (não no banco, que ficaria pesado). Chave = número do uniforme. */
+var FOTOS_UNIF = {1:{foto:'/fotos/uniforme-1.jpg', molde:'/fotos/uniforme-1-molde.jpg'}};
+function sobrePadrao(){
+  var pessoas = 'Gustavo 7|Nildinho 3|Carlet 9|Sócio 10|Jacob 33|Léo 8|Pedrinho 11|Fabrício Patrick 5|Muricy 13|Gil 23|Rafael 99|Amat 55|Guts 17|Vinicius 51|Caio 69|Jao 27|Henrique 777|Ju Calado 12|Rodolfo 100|Muniz 9+1|Fabrício Souza 1+9'
+    .split('|').map(function(s){ var i = s.lastIndexOf(' '); return {nome:s.slice(0, i), num:s.slice(i + 1)}; });
+  return {criado:'2024-04-08', cidade:'Piracicaba (SP)', uniformes:[
+    {id:'u1', num:1, quando:'2025-05', situacao:'pronto', obs:'', pessoas:pessoas},
+    {id:'u2', num:2, quando:'', situacao:'decisao', obs:'', pessoas:[]}
+  ]};
+}
+function ajustarSobre(st){
+  var s = st.sobre;
+  if (!s || typeof s !== 'object' || !Array.isArray(s.uniformes)){ st.sobre = sobrePadrao(); return; }
+  if (typeof s.criado !== 'string') s.criado = '';
+  if (typeof s.cidade !== 'string') s.cidade = '';
+  s.uniformes = s.uniformes.filter(function(u){ return u && u.id; });
+  s.uniformes.forEach(function(u){
+    u.num = +u.num || 1;
+    if (!SITUACOES[u.situacao]) u.situacao = 'decisao';
+    if (typeof u.quando !== 'string') u.quando = '';
+    if (typeof u.obs !== 'string') u.obs = '';
+    if (!Array.isArray(u.pessoas)) u.pessoas = [];
+  });
+}
 function normalizar(st){
   if (!st || typeof st !== 'object') return estadoVazio();
   st.grupo = (typeof st.grupo === 'string' && st.grupo.trim() && st.grupo !== 'Rachão') ? st.grupo : 'Futebas';
@@ -328,6 +375,7 @@ function normalizar(st){
     if (/^Time [A-D]$/.test(t.nome)) t.nome = nomePadrao(t.nome.slice(-1)); /* nome antigo: Time A → Time 1 */
   });
   st.dia = d;
+  ajustarSobre(st);
   st.atualizadoEm = +st.atualizadoEm || 0;
   return st;
 }
@@ -827,8 +875,94 @@ function vElenco(){
   return h;
 }
 
+/* ---------- aba Futebas: história do grupo ---------- */
+function fmtDataCompleta(iso){ var p = String(iso).split('-'); return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : ''; }
+/* "2 anos e 6 meses" desde a data de criação */
+function tempoDesde(iso){
+  var p = String(iso).split('-').map(Number); if (p.length !== 3 || !p[0]) return '';
+  var h = new Date(), meses = (h.getFullYear() - p[0]) * 12 + (h.getMonth() + 1 - p[1]) - (h.getDate() < p[2] ? 1 : 0);
+  if (meses < 1) return 'Menos de um mês';
+  var a = Math.floor(meses / 12), m = meses % 12;
+  return [a ? pl(a, 'ano', 'anos') : '', m ? pl(m, 'mês', 'meses') : ''].filter(Boolean).join(' e ');
+}
+function maiuscula(s){ return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+function ICONE_CAMISA(){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 3 3 6.2l2.2 4.3 2.3-1.1V21h9V9.4l2.3 1.1L21 6.2 15.5 3c-.6 1.7-1.9 2.7-3.5 2.7S9.1 4.7 8.5 3z"/></svg>'; }
+function pessoasOrdem(u){ return u.pessoas.slice().sort(function(a, b){ return a.nome.localeCompare(b.nome, 'pt-BR'); }); }
+function vFutebas(){
+  var s = S.sobre, tempo = tempoDesde(s.criado);
+  var todosDias = S.historico.concat(S.dia.jogos.length ? [S.dia] : []).filter(function(d){ return d.jogos.length; });
+  var todosJogos = todosDias.reduce(function(a, d){ return a.concat(d.jogos); }, []);
+  var gols = todosJogos.reduce(function(n, j){ return n + j.gols.length; }, 0);
+  var h = '<section class="card capa"><img class="escudo-g" src="/icones/escudo.png" alt="Escudo do Futebas" width="130" height="144"><h2>' + esc(S.grupo) + '</h2>' +
+    (s.criado ? '<p><b>Desde ' + esc(fmtDataCompleta(s.criado)) + '</b>' + (s.cidade ? ' · ' + esc(s.cidade) : '') + '</p>' : (s.cidade ? '<p>' + esc(s.cidade) + '</p>' : '')) +
+    (tempo ? '<p class="mudo">' + esc(tempo) + ' de bola rolando</p>' : '') +
+    '<button class="btn-link" style="align-self:center" data-a="editarGrupo">Editar data e cidade</button></section>';
+  h += '<div class="destaques">' +
+    '<div class="dest"><span class="rot">Mensalistas</span><span class="v">' + mensalistas().length + '</span><span class="s">' + pl(avulsosFixos().length, 'avulso', 'avulsos') + '</span></div>' +
+    '<div class="dest"><span class="rot">No app</span><span class="v">' + pl(todosDias.length, 'dia', 'dias') + '</span><span class="s">' + pl(todosJogos.length, 'jogo', 'jogos') + ' · ' + pl(gols, 'gol', 'gols') + '</span></div></div>';
+  var us = s.uniformes.slice().sort(function(a, b){ return b.num - a.num; });
+  h += '<section class="bloco-f"><div class="rot">Uniformes</div>' + us.map(vUniforme).join('') +
+    '<button class="btn bloco" data-a="novoUnif">' + ICON.mao + 'Adicionar uniforme</button></section>';
+  h += vCampeoes(todosDias, todosJogos);
+  return h;
+}
+function vUniforme(u){
+  var f = FOTOS_UNIF[u.num], ps = pessoasOrdem(u);
+  var quando = u.quando ? maiuscula(fmtMes(u.quando)) : '';
+  var linha = u.situacao === 'pronto' ? (quando ? 'Ficou pronto em ' + quando.toLowerCase() : '') : (quando ? 'Previsão: ' + quando.toLowerCase() : '');
+  return '<section class="card unif"><div class="unif-top"><h3>' + u.num + 'º uniforme</h3>' + (u.situacao === 'pronto' ? '' : '<span class="tag">' + esc(SITUACOES[u.situacao]) + '</span>') + '</div>' +
+    (linha ? '<p class="mudo">' + esc(linha) + '</p>' : '') +
+    (f ? '<button class="unif-foto" data-a="verUnif" data-n="' + u.num + '" aria-label="Ver o molde completo do ' + u.num + 'º uniforme"><img src="' + esc(f.foto) + '" alt="' + u.num + 'º uniforme do Futebas, frente e costas" loading="lazy"></button>'
+       : '<div class="unif-vazio">' + ICONE_CAMISA() + '<span>' + (u.situacao === 'pronto' ? 'Sem foto ainda' : 'A foto entra aqui quando ficar pronto') + '</span></div>') +
+    (u.obs ? '<p>' + esc(u.obs) + '</p>' : '') +
+    (ps.length ? '<div class="rot">Quem fez (' + ps.length + ')</div><ul class="elenco-u">' + ps.map(function(p){
+      return '<li><span class="nm">' + esc(p.nome) + '</span>' + (p.num ? '<span class="num">' + esc(p.num) + '</span>' : '') + '</li>';
+    }).join('') + '</ul>' : '<p class="mudo">Lista de quem fez: ainda vazia.</p>') +
+    '<button class="btn" data-a="editarUnif" data-u="' + esc(u.id) + '">Editar o ' + u.num + 'º uniforme</button></section>';
+}
+/* Artilheiro de cada mês (de todos os dias guardados) e os maiores artilheiros de sempre */
+function vCampeoes(dias, jogos){
+  var meses = {};
+  dias.forEach(function(d){ var m = String(d.data).slice(0, 7); (meses[m] = meses[m] || []).push(d); });
+  var lista = Object.keys(meses).sort().reverse();
+  var h = '<section class="bloco-f"><div class="rot">Artilheiro de cada mês</div>';
+  var linhas = lista.map(function(m){
+    var art = artilheiros(meses[m].reduce(function(a, d){ return a.concat(d.jogos); }, [])), top = art.filter(function(a){ return a.pos === 1; });
+    if (!top.length) return '';
+    return '<li><span><span class="m">' + esc(fmtMes(m)) + '</span>' + (m === hojeISO().slice(0, 7) ? ' <span class="tag">Em andamento</span>' : '') + '</span><span class="q">' + top.map(function(a){ return nomeHtml(a.id, a.nome); }).join(', ') + ' <span class="mudo">(' + pl(top[0].gols, 'gol', 'gols') + ')</span></span></li>';
+  }).join('');
+  h += linhas ? '<ul class="campeoes">' + linhas + '</ul>' : '<p class="mudo">Aparece aqui quando o primeiro mês tiver gols marcados no app.</p>';
+  var sempre = artilheiros(jogos).filter(function(a){ return a.pos <= 5; });
+  if (sempre.length) h += '<div class="rot" style="margin-top:6px">Artilheiros de todos os tempos (no app)</div><ol class="rank">' + sempre.map(function(a){
+    return '<li><span class="pos">' + a.pos + 'º</span><span class="quem"><span class="nm">' + nomeHtml(a.id, a.nome) + '</span></span><span class="g">' + a.gols + '</span></li>';
+  }).join('') + '</ol>';
+  return h + '</section>';
+}
+/* Lista colada: "Nome - número" por linha. Aceita também "Nome - Nome na camisa - número" (fica o 1º e o último). */
+function lerPessoasUnif(txt){
+  return String(txt || '').split(/\r?\n/).map(function(l){
+    var partes = l.split(/\s+[-–—]\s*|\s*[-–—]\s+/).map(function(x){ return x.trim(); }).filter(Boolean);
+    if (!partes.length) return null;
+    var nome = limparNome(partes[0]), ult = partes.length > 1 ? partes[partes.length - 1] : '';
+    var num = /^[\d+]{1,6}$/.test(ult) ? ult : '';
+    return nome ? {nome:nome, num:num} : null;
+  }).filter(Boolean);
+}
+function folhaUnif(u){
+  var sel = Object.keys(SITUACOES).map(function(k){ return '<option value="' + k + '"' + (u.situacao === k ? ' selected' : '') + '>' + SITUACOES[k] + '</option>'; }).join('');
+  var txt = pessoasOrdem(u).map(function(p){ return p.nome + (p.num ? ' - ' + p.num : ''); }).join('\n');
+  openSheet('<h3>' + u.num + 'º uniforme</h3><form class="col-btns" data-f="unif" data-u="' + esc(u.id) + '">' +
+    '<label class="rot" for="uSit">Situação</label><select id="uSit">' + sel + '</select>' +
+    '<label class="rot" for="uQuando">Mês em que ficou pronto (ou previsão)</label><input type="month" id="uQuando" value="' + esc(u.quando) + '">' +
+    '<label class="rot" for="uObs">Observação (opcional)</label><input type="text" id="uObs" maxlength="120" value="' + esc(u.obs) + '" placeholder="Ex.: preto com detalhes dourados">' +
+    '<label class="rot" for="uLista">Quem fez: um por linha, "Nome - número"</label><textarea id="uLista" placeholder="Gustavo - 7&#10;Nildinho - 3">' + esc(txt) + '</textarea>' +
+    '<button class="btn prim bloco">Salvar</button></form>' +
+    '<button class="btn perigo bloco" data-a="apagarUnif" data-u="' + esc(u.id) + '">Apagar o ' + u.num + 'º uniforme</button><button class="btn bloco" data-a="fechar">Cancelar</button>');
+}
+function unifPor(id){ return S.sobre.uniformes.filter(function(u){ return u.id === id; })[0]; }
+
 function render(){
-  var v = aba === 'jogo' ? vJogo() : aba === 'times' ? vTimes() : aba === 'resumo' ? vResumo() : vElenco();
+  var v = aba === 'jogo' ? vJogo() : aba === 'times' ? vTimes() : aba === 'resumo' ? vResumo() : aba === 'futebas' ? vFutebas() : vElenco();
   $('#app').innerHTML = htmlTopo() + '<div class="view">' + v + '</div>';
   $$('.nav [data-v]').forEach(function(b){ if (b.dataset.v === aba) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
 }
@@ -1152,6 +1286,31 @@ var A = {
     S.jogadores = S.jogadores.filter(function(p){ return p.id !== pid; });
     S.dia.times.forEach(function(t){ t.jogadores = t.jogadores.filter(function(x){ return x !== pid; }); });
     closeSheet(); commit();
+  },
+  /* aba Futebas */
+  editarGrupo: function(){
+    openSheet('<h3>Sobre o ' + esc(S.grupo) + '</h3><form class="col-btns" data-f="grupo">' +
+      '<label class="rot" for="gCriado">Data em que o grupo foi criado</label><input type="date" id="gCriado" value="' + esc(S.sobre.criado) + '">' +
+      '<label class="rot" for="gCidade">Cidade</label><input type="text" id="gCidade" maxlength="40" value="' + esc(S.sobre.cidade) + '">' +
+      '<button class="btn prim bloco">Salvar</button></form><button class="btn bloco" data-a="fechar">Cancelar</button>');
+  },
+  verUnif: function(b){
+    var n = +b.dataset.n, f = FOTOS_UNIF[n]; if (!f) return;
+    openSheet('<h3>' + n + 'º uniforme</h3><div class="unif-foto" style="cursor:auto"><img src="' + esc(f.molde || f.foto) + '" alt="Molde completo do ' + n + 'º uniforme: frente, costas, gola e mangas"></div><button class="btn bloco" data-a="fechar">Fechar</button>');
+  },
+  novoUnif: function(){
+    var n = S.sobre.uniformes.reduce(function(m, u){ return Math.max(m, u.num); }, 0) + 1;
+    var u = {id:'u' + uid8(), num:n, quando:'', situacao:'decisao', obs:'', pessoas:[]};
+    S.sobre.uniformes.push(u); commit(); folhaUnif(u);
+  },
+  editarUnif: function(b){ var u = unifPor(b.dataset.u); if (u) folhaUnif(u); },
+  apagarUnif: function(b){
+    var u = unifPor(b.dataset.u); if (!u) return;
+    confirmar('Apagar o ' + u.num + 'º uniforme?', 'Some da aba Futebas, junto com a lista de quem fez.', 'confApagarUnif', 'Apagar', ' data-u="' + esc(u.id) + '"');
+  },
+  confApagarUnif: function(b){
+    S.sobre.uniformes = S.sobre.uniformes.filter(function(u){ return u.id !== b.dataset.u; });
+    closeSheet(); commit(); toast('Uniforme apagado');
   }
 };
 /* Convidado do dia passa para o elenco, como mensalista ou avulso */
@@ -1198,6 +1357,19 @@ document.addEventListener('submit', function(e){
       S.dia.jogos.forEach(function(j){ j.gols.forEach(function(g){ if (g.jogador === pid) g.nome = nn; }); });
     }
     closeSheet(); commit();
+  } else if (f.dataset.f === 'grupo'){
+    S.sobre.criado = $('#gCriado').value || '';
+    S.sobre.cidade = $('#gCidade').value.trim().slice(0, 40);
+    closeSheet(); commit(); toast('Salvo');
+  } else if (f.dataset.f === 'unif'){
+    var u = unifPor(f.dataset.u);
+    if (u){
+      u.situacao = $('#uSit').value;
+      u.quando = $('#uQuando').value || '';
+      u.obs = $('#uObs').value.trim().slice(0, 120);
+      u.pessoas = lerPessoasUnif($('#uLista').value);
+    }
+    closeSheet(); commit(); toast('Uniforme salvo');
   }
 });
 document.addEventListener('change', function(e){
@@ -1357,7 +1529,7 @@ window.addEventListener('online', function(){ if (!sb) carregarNuvem(); else sin
 setInterval(function(){ if (pendente && usuario && navigator.onLine) enviar(); }, 30000);
 
 /* ---------- início ---------- */
-try{ var salva = localStorage.getItem(LS_ABA); if (salva && /^(jogo|times|resumo|elenco)$/.test(salva)) aba = salva; }catch(e){}
+try{ var salva = localStorage.getItem(LS_ABA); if (salva && /^(jogo|times|resumo|elenco|futebas)$/.test(salva)) aba = salva; }catch(e){}
 if (!S.jogadores.length && !S.dia.times.length && !S.dia.jogos.length) aba = 'jogo';
 else if (jogoAtual()) aba = 'jogo';
 render();
