@@ -381,7 +381,7 @@ function normalizar(st){
   return st;
 }
 
-var S, real = null, demo = false, aba = 'jogo', mesSel = hojeISO().slice(0, 7), qtdNaMao = false, soMensal = false, filtroNivel = 0;
+var S, real = null, demo = false, aba = 'jogo', mesSel = hojeISO().slice(0, 7), qtdNaMao = false, soMensal = false, filtroNivel = 0, statPer = 'tudo', statOrd = 'aprov';
 var toastTimer = null, wakeLock = null;
 
 try{ S = normalizar(JSON.parse(localStorage.getItem(LS))); }catch(e){ S = estadoVazio(); }
@@ -565,6 +565,9 @@ function iniciarJogo(c, f){
 function encerrarJogo(){
   var d = S.dia, j = jogoAtual(); if (!j) return null;
   j.fim = Date.now();
+  /* Quem estava em cada time no fim do jogo (para as estatísticas contarem certo quem chegou atrasado ou trocou de time) */
+  j.elenco = {};
+  [j.casa, j.fora].forEach(function(t){ var tm = timePor(t); j.elenco[t] = tm ? tm.jogadores.slice() : []; });
   var esperando = (d.fila || []).filter(function(t){ return t !== j.casa && t !== j.fora && timePor(t); });
   if (!esperando.length){ d.fila = []; d.proximo = {casa:j.casa, fora:j.fora}; return j; }
   var p = placar(j);
@@ -904,6 +907,7 @@ function vFutebas(){
   var us = s.uniformes.slice().sort(function(a, b){ return b.num - a.num; });
   h += '<section class="bloco-f"><div class="rot">Uniformes</div>' + us.map(vUniforme).join('') +
     '<button class="btn bloco" data-a="novoUnif">' + ICON.mao + 'Adicionar uniforme</button></section>';
+  h += vEstat();
   h += vCampeoes(todosDias, todosJogos);
   return h;
 }
@@ -939,6 +943,97 @@ function vCampeoes(dias, jogos){
   }).join('') + '</ol>';
   return h + '</section>';
 }
+/* ---------- estatísticas por jogador ----------
+   Sai do que o app já guarda: os times de cada dia e o placar de cada jogo encerrado.
+   Quem estava no time: a escalação do fim do jogo (jogos novos) ou os times do dia (jogos antigos).
+   Aproveitamento = pontos ganhos / pontos possíveis (vitória 3, empate 1). Só entra quem está no Elenco. */
+var PERIODOS = {mes:'Este mês', ano:'Este ano', tudo:'Desde o início'};
+var ORDENS = {aprov:'Aproveitamento', vit:'Vitórias', jogos:'Jogos', gols:'Gols', gpn:'Gols por noite'};
+function diasDoPeriodo(per){
+  var hoje = hojeISO();
+  return S.historico.concat([S.dia]).filter(function(d){
+    if (!d.jogos.length) return false;
+    var dt = String(d.data);
+    return per === 'mes' ? dt.slice(0, 7) === hoje.slice(0, 7) : per === 'ano' ? dt.slice(0, 4) === hoje.slice(0, 4) : true;
+  });
+}
+function estatisticas(per, soMensal){
+  var m = {};
+  S.jogadores.forEach(function(p){
+    if (soMensal && p.avulso) return;
+    m[p.id] = {id:p.id, nome:p.nome, noites:0, J:0, V:0, E:0, D:0, gols:0, melhor:null};
+  });
+  diasDoPeriodo(per).forEach(function(d){
+    var jogou = {}, golsNoite = {};
+    d.jogos.forEach(function(j){
+      if (!j.fim) return; /* jogo em andamento entra quando acabar */
+      j.gols.forEach(function(g){ if (!g.contra && g.jogador && m[g.jogador]){ m[g.jogador].gols++; golsNoite[g.jogador] = (golsNoite[g.jogador] || 0) + 1; jogou[g.jogador] = 1; } });
+      var p = placar(j);
+      [[j.casa, p.casa - p.fora], [j.fora, p.fora - p.casa]].forEach(function(x){
+        var ids = (j.elenco && j.elenco[x[0]]) || ((timePor(x[0], d) || {}).jogadores) || [];
+        ids.forEach(function(pid){
+          var e = m[pid]; if (!e) return;
+          e.J++; jogou[pid] = 1;
+          if (x[1] > 0) e.V++; else if (x[1] < 0) e.D++; else e.E++;
+        });
+      });
+    });
+    Object.keys(jogou).forEach(function(pid){
+      var e = m[pid]; e.noites++;
+      var g = golsNoite[pid] || 0;
+      if (g && (!e.melhor || g > e.melhor.gols)) e.melhor = {gols:g, data:d.data};
+    });
+  });
+  return Object.keys(m).map(function(k){
+    var e = m[k];
+    e.aprov = e.J ? Math.round((3 * e.V + e.E) / (3 * e.J) * 100) : 0;
+    e.gpn = e.noites ? e.gols / e.noites : 0;
+    return e;
+  }).filter(function(e){ return e.noites; });
+}
+function num1(x){ return (Math.round(x * 10) / 10).toLocaleString('pt-BR'); }
+function valorOrdem(e, ord){ return ord === 'aprov' ? e.aprov + '%' : ord === 'vit' ? e.V : ord === 'jogos' ? e.J : ord === 'gols' ? e.gols : num1(e.gpn); }
+function ordenarEstat(arr, ord){
+  var chave = {
+    aprov: function(e){ return [e.aprov, e.J, e.V]; }, vit: function(e){ return [e.V, e.aprov, e.J]; },
+    jogos: function(e){ return [e.J, e.noites, e.aprov]; }, gols: function(e){ return [e.gols, e.gpn, 0]; }, gpn: function(e){ return [e.gpn, e.gols, 0]; }
+  }[ord];
+  var lista = arr.slice().sort(function(a, b){
+    var ka = chave(a), kb = chave(b);
+    for (var i = 0; i < ka.length; i++) if (kb[i] !== ka[i]) return kb[i] - ka[i];
+    return a.nome.localeCompare(b.nome, 'pt-BR');
+  });
+  lista.forEach(function(e){ var v = chave(e)[0]; e.pos = 1 + lista.filter(function(o){ return chave(o)[0] > v; }).length; });
+  return lista;
+}
+function vEstat(){
+  var arr = ordenarEstat(estatisticas(statPer, soMensal), statOrd);
+  function chips(obj, atual, acao){
+    return '<div class="filtros">' + Object.keys(obj).map(function(k){ return '<button class="chip" data-a="' + acao + '" data-v="' + k + '" aria-pressed="' + (k === atual) + '">' + obj[k] + '</button>'; }).join('') + '</div>';
+  }
+  var h = '<section class="bloco-f"><div class="linha-rot"><span class="rot">Estatísticas dos jogadores</span>' + filtroRank() + '</div>' +
+    chips(PERIODOS, statPer, 'statPer') + '<div class="rot">Ordenar por</div>' + chips(ORDENS, statOrd, 'statOrd');
+  if (!arr.length) return h + '<p class="mudo">Aparece aqui depois do primeiro jogo encerrado ' + (statPer === 'mes' ? 'neste mês' : statPer === 'ano' ? 'neste ano' : 'no app') + '.</p></section>';
+  h += '<ol class="rank estat">' + arr.map(function(e){
+    return '<li class="cl"><button class="linha-bt" data-a="verEstat" data-p="' + esc(e.id) + '"><span class="pos">' + e.pos + 'º</span>' +
+      '<span class="quem" style="flex-direction:column;align-items:flex-start;gap:2px"><span class="nm">' + nomeHtml(e.id, e.nome) + '</span>' +
+      '<span class="mudo" style="white-space:normal;font-size:13px">' + pl(e.J, 'jogo', 'jogos') + ' · ' + e.V + 'V ' + e.E + 'E ' + e.D + 'D · ' + e.aprov + '% · ' + pl(e.gols, 'gol', 'gols') + '</span></span>' +
+      '<span class="g">' + valorOrdem(e, statOrd) + '</span></button></li>';
+  }).join('') + '</ol><p class="mudo">Aproveitamento: vitória vale 3 pontos e empate 1, sobre o total possível. Gols por noite: gols divididos pelas noites em que jogou. Toque num nome para ver a ficha.</p></section>';
+  return h;
+}
+function folhaEstat(pid){
+  var e = estatisticas(statPer, false).filter(function(x){ return x.id === pid; })[0];
+  if (!e){ closeSheet(); return; }
+  function box(rot, v, s){ return '<div class="dest"><span class="rot">' + rot + '</span><span class="v">' + v + '</span>' + (s ? '<span class="s">' + s + '</span>' : '') + '</div>'; }
+  openSheet('<h3>' + nomeHtml(e.id, e.nome) + '</h3><p class="mudo">' + esc(PERIODOS[statPer]) + '</p><div class="destaques">' +
+    box('Aproveitamento', e.aprov + '%', e.V + 'V ' + e.E + 'E ' + e.D + 'D') +
+    box('Jogos', e.J, pl(e.noites, 'noite', 'noites')) +
+    box('Gols', e.gols, e.J ? num1(e.gols / e.J) + ' por jogo' : '') +
+    box('Gols por noite', num1(e.gpn), e.melhor ? 'Melhor noite: ' + pl(e.melhor.gols, 'gol', 'gols') + ' em ' + fmtDataCompleta(e.melhor.data) : 'Ainda sem gol') +
+    '</div><button class="btn bloco" data-a="fechar">Fechar</button>');
+}
+
 /* Lista colada: "Nome - número" por linha. Aceita também "Nome - Nome na camisa - número" (fica o 1º e o último). */
 function lerPessoasUnif(txt){
   return String(txt || '').split(/\r?\n/).map(function(l){
@@ -1299,6 +1394,9 @@ var A = {
     closeSheet(); commit();
   },
   /* aba Futebas */
+  statPer: function(b){ statPer = b.dataset.v; render(); },
+  statOrd: function(b){ statOrd = b.dataset.v; render(); },
+  verEstat: function(b){ folhaEstat(b.dataset.p); },
   editarGrupo: function(){
     openSheet('<h3>Sobre o ' + esc(S.grupo) + '</h3><form class="col-btns" data-f="grupo">' +
       '<label class="rot" for="gCriado">Data em que o grupo foi criado</label><input type="date" id="gCriado" value="' + esc(S.sobre.criado) + '">' +
