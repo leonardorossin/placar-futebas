@@ -48,5 +48,6 @@ Visual: sempre escuro, nas cores do escudo do Futebas (preto, dourado `--accent`
 
 ## Próximos passos
 1. Ligar o GitHub à Vercel (instalar o app da Vercel no GitHub) para cada `git push` publicar sozinho.
+2. Entrada com **Administrador** (login atual do Supabase, pode tudo) ou **Visitante** (um toque, sem senha, só visualiza, nada editável). Visitante vê: Futebas, Resumo, Elenco sem os níveis e talvez Times (sem força) e o placar do Jogo só para ver. Plano: o app do admin grava a cada mudança uma cópia "vitrine" sem os níveis numa tabela separada (`futebas_publico`), que o visitante pode ler sem login (RLS de leitura para `anon` só nela). A tabela `futebas` continua só para logado, para os níveis não vazarem. O Leo precisa rodar um SQL no Supabase. Ainda falta decidir quais abas o visitante vê.
 
 Plano antigo, para mais tarde: app nativo com React Native/Expo + Supabase. Também tenho um robô de WhatsApp ("adm") que manda avisos no grupo e talvez possa postar os resultados.
