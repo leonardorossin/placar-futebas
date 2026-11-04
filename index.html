@@ -429,7 +429,6 @@ function golsPorTime(j, dia){
     }).join(', ');
   });
 }
-function marcadores(j, dia){ return golsPorTime(j, dia).join(' · '); }
 function txtGol(j, g){
   return ['⚽ *GOL DO ' + nomeTime(g.time).toUpperCase() + '!*',
     g.contra ? 'Gol contra' : nomeTxt(g.jogador, g.nome),
@@ -454,9 +453,8 @@ function txtResumo(dia, soMensal){
   if (dia.jogos.length){
     l.push('', '*Jogos*');
     dia.jogos.forEach(function(j){
-      var mk = marcadores(j, dia);
       l.push(j.n + '. ' + linhaPlacar(j, dia) + (j.fim ? '' : ' (em andamento)'));
-      if (mk) l.push('    ⚽ ' + mk);
+      golsPorTime(j, dia).forEach(function(s){ l.push('    ⚽ ' + s); });
     });
   }
   if (cls.some(function(c){ return c.J; })){
@@ -678,10 +676,10 @@ function vProximo(){
   function opts(sel){ return d.times.map(function(t){ return '<option value="' + t.id + '"' + (t.id === sel ? ' selected' : '') + '>' + esc(t.nome) + '</option>'; }).join(''); }
   var h = '';
   if (ult){
-    var p = placar(ult), mk = marcadores(ult);
+    var p = placar(ult), mk = golsPorTime(ult).join('\n');
     h += '<section class="card"><div class="rot">Fim do jogo ' + ult.n + '</div>' +
       '<div class="res"><span class="colete cor-' + corTime(ult.casa) + '"></span>' + esc(nomeTime(ult.casa)) + ' <span class="n">' + p.casa + '</span> x <span class="n">' + p.fora + '</span> ' + esc(nomeTime(ult.fora)) + '<span class="colete cor-' + corTime(ult.fora) + '"></span></div>' +
-      (mk ? '<p class="mudo">' + esc(mk) + '</p>' : '') +
+      (mk ? '<p class="mudo" style="white-space:pre-line">' + esc(mk) + '</p>' : '') +
       (ult.passou ? '<p class="mudo">Empate. ' + esc(nomeTime(ult.passou)) + ' passou.</p>' : '') +
       '<a class="btn zap bloco" href="' + esc(wa(txtFim(ult))) + '" target="_blank" rel="noopener">' + ICON.enviar + 'Mandar resultado no grupo</a></section>';
   }
@@ -754,8 +752,8 @@ function vResumo(){
     return '<li class="cl"><button class="linha-bt" data-a="golsDe" data-p="' + esc(a.id) + '"><span class="pos">' + a.pos + 'º</span><span class="quem"><span class="colete cor-' + corTime(a.time) + '"></span><span class="nm">' + nomeHtml(a.id, a.nome) + '</span></span><span class="g">' + a.gols + '</span></button></li>';
   }).join('') + '</ol>' : '<p class="mudo">' + (soMensal ? 'Nenhum gol de mensalista ainda.' : 'Nenhum gol marcado ainda.') + '</p>') + '</section>';
   h += '<section class="bloco-f"><div class="rot">Jogos</div><ul class="jogos">' + d.jogos.map(function(j){
-    var mk = marcadores(j);
-    return '<li class="cl"><button class="linha-bt" data-a="verJogo" data-n="' + j.n + '"><div class="l1"><span class="n">' + j.n + '</span><span>' + esc(linhaPlacar(j)) + '</span>' + (j.fim ? '' : '<span class="tag">Agora</span>') + '</div>' + (mk ? '<span class="mudo">' + esc(mk) + '</span>' : '') + '</button></li>';
+    var mk = golsPorTime(j).map(function(s){ return '<span class="mudo" style="display:block">' + esc(s) + '</span>'; }).join('');
+    return '<li class="cl"><button class="linha-bt" data-a="verJogo" data-n="' + j.n + '"><div class="l1"><span class="n">' + j.n + '</span><span>' + esc(linhaPlacar(j)) + '</span>' + (j.fim ? '' : '<span class="tag">Agora</span>') + '</div>' + mk + '</button></li>';
   }).join('') + '</ul><p class="mudo">Toque num jogo ou num artilheiro para corrigir ou apagar gols.</p></section>';
   h += '<div class="col-btns"><a class="btn zap" href="' + esc(wa(txtResumo(d, soMensal))) + '" target="_blank" rel="noopener">' + ICON.enviar + 'Mandar resumo no grupo' + rotFiltro() + '</a><button class="btn" data-a="copiar" data-txt="resumo">Copiar o texto do resumo</button><button class="btn perigo" data-a="encerrarDia">Encerrar o dia</button>' +
     '<button class="btn-link perigo-link" data-a="apagarJogos">Apagar todos os jogos de hoje</button></div>';
