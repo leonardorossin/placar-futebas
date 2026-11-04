@@ -491,10 +491,6 @@ function txtTimes(){
     l.push('', (EMOJI_COR[t.cor] || '⚪') + ' *' + t.nome.toUpperCase() + '*');
     t.jogadores.map(function(pid){ return nomeTxt(pid); }).sort(function(a, b){ return a.localeCompare(b, 'pt-BR'); }).forEach(function(n){ l.push(n); });
   });
-  if (!d.jogos.length && d.times.length >= 2){
-    var p = d.proximo || {casa:d.times[0].id, fora:d.times[1].id};
-    l.push('', '▶️ 1º jogo: ' + nomeTime(p.casa) + ' x ' + nomeTime(p.fora));
-  }
   return l.join('\n');
 }
 
