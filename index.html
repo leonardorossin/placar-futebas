@@ -412,12 +412,12 @@ function jogosDoMes(mes){ return diasDoMes(mes).reduce(function(a, d){ return a.
 
 /* ---------- textos do WhatsApp ---------- */
 function linhaPlacar(j, dia){ var p = placar(j); return nomeTime(j.casa, dia) + ' ' + p.casa + ' x ' + p.fora + ' ' + nomeTime(j.fora, dia); }
-/* Uma linha por time, sem repetir o nome: "Time 1: Leo (3), Carlão (avulso, 2), Dudu, gol contra do Time 2" */
+/* Uma linha por time, sem repetir o nome: "Time 1: Leo (3), Carlão (avulso, 2), Dudu, gol contra" */
 function golsPorTime(j, dia){
   var por = {};
   j.gols.forEach(function(g){ (por[g.time] = por[g.time] || []).push(g); });
   return [j.casa, j.fora].filter(function(t){ return por[t]; }).map(function(t){
-    var cont = {}, ordem = [], contra = 'gol contra do ' + nomeTime(t === j.casa ? j.fora : j.casa, dia);
+    var cont = {}, ordem = [], contra = 'gol contra';
     por[t].forEach(function(g){
       var k = g.contra ? contra : g.nome;
       if (!cont[k]){ cont[k] = {n:0, avulso:!g.contra && ehAvulsoFixo(g.jogador)}; ordem.push(k); }
