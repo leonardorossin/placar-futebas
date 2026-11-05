@@ -724,13 +724,13 @@ function closeSheet(){
   $('#sheetBody').innerHTML = '';
   document.body.classList.remove('travado');
 }
-/* ms: quanto tempo fica na tela (padrão 7 s com botões, 2,8 s sem). Tocar no aviso (fora dos botões) fecha na hora. */
+/* Todo aviso fica 2 s na tela (decisão do Leo). Tocar no aviso (fora dos botões) fecha na hora. */
 function toast(msg, acoes, ms){
   var el = $('#toast');
   el.innerHTML = '<span class="tx">' + esc(msg) + '</span>' + (acoes ? '<div class="ta">' + acoes + '</div>' : '');
   el.hidden = false;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(function(){ el.hidden = true; }, ms || (acoes ? 7000 : 2800));
+  toastTimer = setTimeout(function(){ el.hidden = true; }, ms || 2000);
 }
 function esconderToast(){ clearTimeout(toastTimer); $('#toast').hidden = true; }
 $('#toast').addEventListener('click', function(e){ if (!e.target.closest('button, a')) esconderToast(); });
@@ -1248,7 +1248,7 @@ function marcarGol(tid, pid){
   commit(); vibrar();
   var p = placar(j);
   toast('Gol! ' + (pid ? nomeTxt(pid, g.nome) : 'Gol contra') + ' · ' + p.casa + ' x ' + p.fora,
-    '<button data-a="desfazerGol" data-g="' + g.id + '">Desfazer</button><a href="' + esc(wa(txtGol(j, g))) + '" target="_blank" rel="noopener">Mandar no grupo</a>', 3500);
+    '<button data-a="desfazerGol" data-g="' + g.id + '">Desfazer</button><a href="' + esc(wa(txtGol(j, g))) + '" target="_blank" rel="noopener">Mandar no grupo</a>');
   if (pid){
     var b = $('.jog[data-p="' + (window.CSS && CSS.escape ? CSS.escape(pid) : pid) + '"]');
     if (b){ b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash'); }
