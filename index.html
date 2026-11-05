@@ -335,7 +335,7 @@ function estadoVazio(){ return {v:1, grupo:'Futebas', jogadores:[], dia: novoDia
    Uniforme: num (1º, 2º…), quando (AAAA-MM), situação, observação e quem fez (nome e número da camisa). */
 var SITUACOES = {pronto:'Pronto', producao:'Em produção', decisao:'Em decisão'};
 /* Fotos ficam na pasta fotos/ do site (não no banco, que ficaria pesado). Chave = número do uniforme. */
-var FOTOS_UNIF = {1:{foto:'/fotos/uniforme-1.png', molde:'/fotos/uniforme-1-molde.jpg'}};
+var FOTOS_UNIF = {1:{foto:'/fotos/uniforme-2025.webp', molde:'/fotos/uniforme-1-molde.jpg'}};
 function sobrePadrao(){
   var pessoas = 'Gustavo 7|Nildinho 3|Carlet 9|Sócio 10|Jacob 33|Léo 8|Pedrinho 11|Fabrício Patrick 5|Muricy 13|Gil 23|Rafael 99|Amat 55|Guts 17|Vinicius 51|Caio 69|Jao 27|Henrique 777|Ju Calado 12|Rodolfo 100|Muniz 9+1|Fabrício Souza 1+9'
     .split('|').map(function(s){ var i = s.lastIndexOf(' '); return {nome:s.slice(0, i), num:s.slice(i + 1)}; });
