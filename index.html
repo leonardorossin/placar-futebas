@@ -220,6 +220,8 @@ select{appearance:auto}
 .elenco-u li{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--surface-2);border-radius:10px;padding:8px 12px;min-height:44px;min-width:0}
 .elenco-u .nm{font-weight:600;overflow-wrap:anywhere;min-width:0}
 .elenco-u .num{font:800 22px/1 var(--f-display);color:var(--accent);font-variant-numeric:tabular-nums;white-space:nowrap}
+.dest-bt{appearance:none;border:0;font:inherit;text-align:left;cursor:pointer;width:100%}
+.dest-bt:active{transform:scale(.98)}
 .campeoes{list-style:none;margin:0;padding:0;background:var(--surface);border:1px solid var(--line);border-radius:16px}
 .campeoes li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--line)}
 .campeoes li:last-child{border-bottom:0}
@@ -332,7 +334,7 @@ function novoDia(){ return {data: hojeISO(), times: [], avulsos: [], jogos: [], 
 function ajustarNivel(p){ p.nivel = NIVEIS[p.nivel] ? +p.nivel : 2; }
 function estadoVazio(){ return {v:1, grupo:'Futebas', jogadores:[], dia: novoDia(), historico:[], atualizadoEm:0, sobre: sobrePadrao()}; }
 /* Aba Futebas: a história do grupo. Começa com o que o Leo passou; dá para editar no app.
-   Uniforme: num (1º, 2º…), quando (AAAA-MM), situação, observação e quem fez (nome e número da camisa). */
+   Uniforme: num (1º, 2º…), quando (AAAA-MM), situação, observação e jogadores (nome e número da camisa). */
 var SITUACOES = {pronto:'Pronto', producao:'Em produção', decisao:'Em decisão'};
 /* Fotos ficam na pasta fotos/ do site (não no banco, que ficaria pesado). Chave = número do uniforme. */
 var FOTOS_UNIF = {1:{foto:'/fotos/uniforme-2025.webp', molde:'/fotos/uniforme-1-molde.jpg'}};
@@ -903,7 +905,7 @@ function vFutebas(){
     (tempo ? '<p class="mudo">' + esc(tempo) + ' de bola rolando</p>' : '') +
     '<button class="btn-link" style="align-self:center" data-a="editarGrupo">Editar data e cidade</button></section>';
   h += '<div class="destaques">' +
-    '<div class="dest"><span class="rot">Mensalistas</span><span class="v">' + mensalistas().length + '</span></div>' +
+    '<button class="dest dest-bt" data-a="verMensalistas"><span class="rot">Mensalistas</span><span class="v">' + mensalistas().length + '</span><span class="s">Ver a lista ›</span></button>' +
     '<div class="dest"><span class="rot">No app</span><span class="v">' + pl(todosDias.length, 'dia', 'dias') + '</span><span class="s">' + pl(todosJogos.length, 'jogo', 'jogos') + ' · ' + pl(gols, 'gol', 'gols') + '</span></div></div>';
   var us = s.uniformes.slice().sort(function(a, b){ return b.temporada - a.temporada || b.num - a.num; });
   h += '<section class="bloco-f"><div class="rot">Uniformes</div>' + us.map(vUniforme).join('') +
@@ -914,16 +916,13 @@ function vFutebas(){
 }
 function vUniforme(u){
   var f = FOTOS_UNIF[u.num], ps = pessoasOrdem(u);
-  var quando = u.quando ? maiuscula(fmtMes(u.quando)) : '';
-  var linha = u.situacao === 'pronto' ? (quando ? 'Ficou pronto em ' + quando.toLowerCase() : '') : (quando ? 'Previsão: ' + quando.toLowerCase() : '');
   return '<section class="card unif"><div class="unif-top"><h3>' + esc(nomeUnif(u)) + '</h3>' + (u.situacao === 'pronto' ? '' : '<span class="tag">' + esc(SITUACOES[u.situacao]) + '</span>') + '</div>' +
-    (linha ? '<p class="mudo">' + esc(linha) + '</p>' : '') +
     (f ? '<button class="unif-foto" data-a="verUnif" data-u="' + esc(u.id) + '" aria-label="Ver o molde completo do uniforme da ' + esc(nomeUnif(u)) + '"><img src="' + esc(f.foto) + '" alt="Uniforme da ' + esc(nomeUnif(u)) + ', frente e costas" loading="lazy"></button>'
        : '<div class="unif-vazio">' + ICONE_CAMISA() + '<span>' + (u.situacao === 'pronto' ? 'Sem foto ainda' : 'A foto entra aqui quando ficar pronto') + '</span></div>') +
     (u.obs ? '<p>' + esc(u.obs) + '</p>' : '') +
-    (ps.length ? '<div class="rot">Quem fez (' + ps.length + ')</div><ul class="elenco-u">' + ps.map(function(p){
+    (ps.length ? '<div class="rot">Jogadores (' + ps.length + ')</div><ul class="elenco-u">' + ps.map(function(p){
       return '<li><span class="nm">' + esc(p.nome) + '</span>' + (p.num ? '<span class="num">' + esc(p.num) + '</span>' : '') + '</li>';
-    }).join('') + '</ul>' : '<p class="mudo">Lista de quem fez: ainda vazia.</p>') +
+    }).join('') + '</ul>' : '<p class="mudo">Lista de jogadores: ainda vazia.</p>') +
     '<button class="btn" data-a="editarUnif" data-u="' + esc(u.id) + '">Editar ' + esc(nomeUnif(u).toLowerCase()) + '</button></section>';
 }
 /* Artilheiro de cada mês (de todos os dias guardados) e os maiores artilheiros de sempre */
@@ -1051,9 +1050,8 @@ function folhaUnif(u){
   openSheet('<h3>' + esc(nomeUnif(u)) + '</h3><form class="col-btns" data-f="unif" data-u="' + esc(u.id) + '">' +
     '<label class="rot" for="uTemp">Temporada (ano)</label><input type="text" inputmode="numeric" id="uTemp" maxlength="4" value="' + u.temporada + '">' +
     '<label class="rot" for="uSit">Situação</label><select id="uSit">' + sel + '</select>' +
-    '<label class="rot" for="uQuando">Mês em que ficou pronto (ou previsão)</label><input type="month" id="uQuando" value="' + esc(u.quando) + '">' +
     '<label class="rot" for="uObs">Observação (opcional)</label><input type="text" id="uObs" maxlength="120" value="' + esc(u.obs) + '" placeholder="Ex.: preto com detalhes dourados">' +
-    '<label class="rot" for="uLista">Quem fez: um por linha, "Nome - número"</label><textarea id="uLista" placeholder="Gustavo - 7&#10;Nildinho - 3">' + esc(txt) + '</textarea>' +
+    '<label class="rot" for="uLista">Jogadores: um por linha, "Nome - número"</label><textarea id="uLista" placeholder="Gustavo - 7&#10;Nildinho - 3">' + esc(txt) + '</textarea>' +
     '<button class="btn prim bloco">Salvar</button></form>' +
     '<button class="btn perigo bloco" data-a="apagarUnif" data-u="' + esc(u.id) + '">Apagar ' + esc(nomeUnif(u).toLowerCase()) + '</button><button class="btn bloco" data-a="fechar">Cancelar</button>');
 }
@@ -1400,6 +1398,10 @@ var A = {
   statPer: function(b){ statPer = b.dataset.v; render(); },
   statOrd: function(b){ statOrd = b.dataset.v; render(); },
   verEstat: function(b){ folhaEstat(b.dataset.p); },
+  verMensalistas: function(){
+    var ms = ordenar(mensalistas());
+    openSheet('<h3>Mensalistas (' + ms.length + ')</h3>' + (ms.length ? '<ul class="elenco-u">' + ms.map(function(p){ return '<li><span class="nm">' + esc(p.nome) + '</span></li>'; }).join('') + '</ul>' : '<p class="mudo">Nenhum mensalista cadastrado ainda.</p>') + '<button class="btn bloco" data-a="fechar">Fechar</button>');
+  },
   editarGrupo: function(){
     openSheet('<h3>Sobre o ' + esc(S.grupo) + '</h3><form class="col-btns" data-f="grupo">' +
       '<label class="rot" for="gCriado">Data em que o grupo foi criado</label><input type="date" id="gCriado" value="' + esc(S.sobre.criado) + '">' +
@@ -1419,7 +1421,7 @@ var A = {
   editarUnif: function(b){ var u = unifPor(b.dataset.u); if (u) folhaUnif(u); },
   apagarUnif: function(b){
     var u = unifPor(b.dataset.u); if (!u) return;
-    confirmar('Apagar ' + nomeUnif(u).toLowerCase() + '?', 'Some da aba Futebas, junto com a lista de quem fez.', 'confApagarUnif', 'Apagar', ' data-u="' + esc(u.id) + '"');
+    confirmar('Apagar ' + nomeUnif(u).toLowerCase() + '?', 'Some da aba Futebas, junto com a lista de jogadores.', 'confApagarUnif', 'Apagar', ' data-u="' + esc(u.id) + '"');
   },
   confApagarUnif: function(b){
     S.sobre.uniformes = S.sobre.uniformes.filter(function(u){ return u.id !== b.dataset.u; });
@@ -1479,7 +1481,6 @@ document.addEventListener('submit', function(e){
     if (u){
       u.situacao = $('#uSit').value;
       var tp = parseInt($('#uTemp').value, 10); if (tp >= 2000 && tp <= 2100) u.temporada = tp;
-      u.quando = $('#uQuando').value || '';
       u.obs = $('#uObs').value.trim().slice(0, 120);
       u.pessoas = lerPessoasUnif($('#uLista').value);
     }
