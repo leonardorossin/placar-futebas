@@ -54,5 +54,6 @@ Visual: nas cores do escudo do Futebas (preto, dourado `--accent` e branco). Com
 
 ## Próximos passos
 1. Ligar o GitHub à Vercel (instalar o app da Vercel no GitHub) para cada `git push` publicar sozinho.
+2. **Ideia do Leo (lembrar ele):** "membro desde" para cada mensalista (no Elenco / lista de Mensalistas da aba Futebas), com destaque para os mais antigos (ex.: fundadores, veteranos, categorias por tempo de grupo). As datas de entrada estão no grupo do WhatsApp. Caminho sugerido: exportar a conversa do grupo (sem mídia), o `.txt` traz as linhas "fulano entrou / adicionou fulano" com data; dá para tirar as datas dali e o Leo confere/completa na mão. Limites: só aparece o que ainda está no histórico do celular dele, e os nomes vêm como estão salvos nos contatos (ou número). Nada feito ainda; conversar antes de fazer.
 
 Plano antigo, para mais tarde: app nativo com React Native/Expo + Supabase. Também tenho um robô de WhatsApp ("adm") que manda avisos no grupo e talvez possa postar os resultados.
