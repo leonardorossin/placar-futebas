@@ -984,7 +984,7 @@ function vSortear(){
     return '<div class="checks">' + ordenar(arr).map(function(p){ return '<label class="ck"><input type="checkbox" data-vs value="' + esc(p.id) + '"' + (marcadoVS(p) ? ' checked' : '') + '><span>' + esc(p.nome) + '</span></label>'; }).join('') + '</div>';
   }
   var av = avulsosFixos();
-  return '<section class="bloco-f"><h2>Sortear times</h2><p class="mudo">Marque quem veio. O sorteio equilibra os times pelo nível de cada um. Nada aqui é salvo: serve para montar os times e mandar no grupo.</p>' +
+  return '<section class="bloco-f"><h2>Sortear times</h2>' +
     '<div class="linha-rot"><span class="rot">Mensalistas</span><span><button class="btn mini" data-a="vsTodos" data-v="1">Todos</button> <button class="btn mini" data-a="vsTodos" data-v="0">Nenhum</button></span></div>' + checks(mensalistas()) +
     (av.length ? '<div class="rot">Avulsos</div>' + checks(av) : '') +
     '<div class="linha-rot"><span class="rot">Quantos times</span><div class="seg">' + [2,3,4].map(function(k){ return '<button data-a="vsQtd" data-v="' + k + '" aria-pressed="' + (k === c.n) + '">' + k + '</button>'; }).join('') + '</div></div>' +
