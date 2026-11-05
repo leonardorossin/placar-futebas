@@ -841,7 +841,7 @@ function vTimes(){
     '<button class="btn-link" data-a="copiar" data-txt="times">Copiar o texto dos times</button></div>';
   h += '<section class="bloco-f"><div class="rot">Sem time (' + sem.length + ')</div>' + (sem.length ? '<div class="chips">' + sem.map(function(p){ return chip(p.id); }).join('') + '</div>' : '<p class="mudo">Todo mundo já está num time.</p>') +
     (avFora.length ? '<div class="rot">Avulsos fora dos times (' + avFora.length + ')</div><div class="chips">' + avFora.map(function(p){ return chip(p.id); }).join('') + '</div>' : '') +
-    '<div class="rot">Convidado de hoje</div><form class="linha" data-f="conv"><input type="text" id="convNome" placeholder="Nome do convidado" autocomplete="off" enterkeyhint="done"><button class="btn">Adicionar</button></form></section>';
+    '</section>';
   h += '<button class="btn perigo bloco" data-a="limparTimes">Limpar os times</button>';
   return h;
 }
@@ -987,8 +987,6 @@ function vSortear(){
   return '<section class="bloco-f"><h2>Sortear times</h2><p class="mudo">Marque quem veio. O sorteio equilibra os times pelo nível de cada um. Nada aqui é salvo: serve para montar os times e mandar no grupo.</p>' +
     '<div class="linha-rot"><span class="rot">Mensalistas</span><span><button class="btn mini" data-a="vsTodos" data-v="1">Todos</button> <button class="btn mini" data-a="vsTodos" data-v="0">Nenhum</button></span></div>' + checks(mensalistas()) +
     (av.length ? '<div class="rot">Avulsos</div>' + checks(av) : '') +
-    '<div class="rot">Convidados de hoje</div>' + (vsConv.length ? '<div class="chips">' + vsConv.map(function(nm, i){ return '<button class="chip conv" data-a="vsTirarConv" data-i="' + i + '" aria-label="Tirar ' + esc(nm) + '">' + esc(nm) + ' ✕</button>'; }).join('') + '</div>' : '') +
-    '<form class="linha" data-f="vsConv"><input type="text" id="vsConvNome" placeholder="Nome do convidado" autocomplete="off" enterkeyhint="done" maxlength="40"><button class="btn">Adicionar</button></form>' +
     '<div class="linha-rot"><span class="rot">Quantos times</span><div class="seg">' + [2,3,4].map(function(k){ return '<button data-a="vsQtd" data-v="' + k + '" aria-pressed="' + (k === c.n) + '">' + k + '</button>'; }).join('') + '</div></div>' +
     '<p class="mudo" id="vsInfo">' + esc(vsInfoTxt()) + '</p>' +
     '<button class="btn prim bloco grande" data-a="vsSortear"' + (vsCarregando ? ' disabled' : '') + '>' + ICON.dado + (vsCarregando ? 'Sorteando…' : 'Sortear') + '</button></section>';
@@ -1590,7 +1588,6 @@ var A = {
   vsSortear: function(){ sortearVisitante(); },
   vsMudar: function(){ vsRes = null; render(); window.scrollTo(0, 0); },
   vsCopiar: function(){ copiar(txtTimesVS()); },
-  vsTirarConv: function(b){ vsConv.splice(+b.dataset.i, 1); render(); },
   verMensalistas: function(){
     var ms = ordenar(mensalistas());
     openSheet('<h3>Mensalistas (' + ms.length + ')</h3>' + (ms.length ? '<ul class="elenco-u">' + ms.map(function(p){ return '<li><span class="nm">' + esc(p.nome) + '</span></li>'; }).join('') + '</ul>' : '<p class="mudo">Nenhum mensalista cadastrado ainda.</p>') + '<button class="btn bloco" data-a="fechar">Fechar</button>');
@@ -1634,7 +1631,7 @@ function virarMensalistas(ids, avulso){
 
 /* O que o visitante (e a tela de entrada) pode tocar. Qualquer outra ação é ignorada: o visitante só vê. */
 var LIVRES_VISITANTE = ['tema','aba','fechar','statPer','statOrd','verEstat','verMensalistas','verUnif','filtroRank','mes','conta',
-  'entrarAdmin','voltarInicio','sair','vsAtualizar','vsTodos','vsQtd','vsSortear','vsMudar','vsCopiar','vsTirarConv'];
+  'entrarAdmin','voltarInicio','sair','vsAtualizar','vsTodos','vsQtd','vsSortear','vsMudar','vsCopiar'];
 var LIVRES_ENTRADA = ['tema','entrarVisitante','entrarAdmin','fechar'];
 document.addEventListener('click', function(e){
   var b = e.target.closest('[data-a]');
@@ -1650,12 +1647,7 @@ document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && !$('
 document.addEventListener('submit', function(e){
   var f = e.target.closest('form[data-f]'); if (!f) return;
   e.preventDefault();
-  if ((!modo || visitante()) && f.dataset.f !== 'login' && f.dataset.f !== 'vsConv') return;
-  if (f.dataset.f === 'vsConv'){
-    var vc = limparNome($('#vsConvNome').value);
-    if (vc && vsConv.length < 15){ vsConv.push(vc); render(); var ci = $('#vsConvNome'); if (ci) ci.focus(); }
-    return;
-  }
+  if ((!modo || visitante()) && f.dataset.f !== 'login') return;
   if (f.dataset.f === 'add' || f.dataset.f === 'addAv'){
     var av = f.dataset.f === 'addAv', campo = av ? '#novoAvulso' : '#novoNome', nm = limparNome($(campo).value);
     if (!nm) return;
