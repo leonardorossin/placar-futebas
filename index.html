@@ -340,8 +340,8 @@ function sobrePadrao(){
   var pessoas = 'Gustavo 7|Nildinho 3|Carlet 9|Sócio 10|Jacob 33|Léo 8|Pedrinho 11|Fabrício Patrick 5|Muricy 13|Gil 23|Rafael 99|Amat 55|Guts 17|Vinicius 51|Caio 69|Jao 27|Henrique 777|Ju Calado 12|Rodolfo 100|Muniz 9+1|Fabrício Souza 1+9'
     .split('|').map(function(s){ var i = s.lastIndexOf(' '); return {nome:s.slice(0, i), num:s.slice(i + 1)}; });
   return {criado:'2024-04-08', cidade:'Piracicaba (SP)', uniformes:[
-    {id:'u1', num:1, quando:'2025-05', situacao:'pronto', obs:'', pessoas:pessoas},
-    {id:'u2', num:2, quando:'', situacao:'decisao', obs:'', pessoas:[]}
+    {id:'u1', num:1, temporada:2025, quando:'2025-05', situacao:'pronto', obs:'', pessoas:pessoas},
+    {id:'u2', num:2, temporada:2026, quando:'', situacao:'decisao', obs:'', pessoas:[]}
   ]};
 }
 function ajustarSobre(st){
@@ -352,6 +352,7 @@ function ajustarSobre(st){
   s.uniformes = s.uniformes.filter(function(u){ return u && u.id; });
   s.uniformes.forEach(function(u){
     u.num = +u.num || 1;
+    u.temporada = +u.temporada || 2024 + u.num; /* 1º uniforme = temporada 2025, 2º = 2026 */
     if (!SITUACOES[u.situacao]) u.situacao = 'decisao';
     if (typeof u.quando !== 'string') u.quando = '';
     if (typeof u.obs !== 'string') u.obs = '';
@@ -902,9 +903,9 @@ function vFutebas(){
     (tempo ? '<p class="mudo">' + esc(tempo) + ' de bola rolando</p>' : '') +
     '<button class="btn-link" style="align-self:center" data-a="editarGrupo">Editar data e cidade</button></section>';
   h += '<div class="destaques">' +
-    '<div class="dest"><span class="rot">Mensalistas</span><span class="v">' + mensalistas().length + '</span><span class="s">' + pl(avulsosFixos().length, 'avulso', 'avulsos') + '</span></div>' +
+    '<div class="dest"><span class="rot">Mensalistas</span><span class="v">' + mensalistas().length + '</span></div>' +
     '<div class="dest"><span class="rot">No app</span><span class="v">' + pl(todosDias.length, 'dia', 'dias') + '</span><span class="s">' + pl(todosJogos.length, 'jogo', 'jogos') + ' · ' + pl(gols, 'gol', 'gols') + '</span></div></div>';
-  var us = s.uniformes.slice().sort(function(a, b){ return b.num - a.num; });
+  var us = s.uniformes.slice().sort(function(a, b){ return b.temporada - a.temporada || b.num - a.num; });
   h += '<section class="bloco-f"><div class="rot">Uniformes</div>' + us.map(vUniforme).join('') +
     '<button class="btn bloco" data-a="novoUnif">' + ICON.mao + 'Adicionar uniforme</button></section>';
   h += vEstat();
@@ -915,15 +916,15 @@ function vUniforme(u){
   var f = FOTOS_UNIF[u.num], ps = pessoasOrdem(u);
   var quando = u.quando ? maiuscula(fmtMes(u.quando)) : '';
   var linha = u.situacao === 'pronto' ? (quando ? 'Ficou pronto em ' + quando.toLowerCase() : '') : (quando ? 'Previsão: ' + quando.toLowerCase() : '');
-  return '<section class="card unif"><div class="unif-top"><h3>' + u.num + 'º uniforme</h3>' + (u.situacao === 'pronto' ? '' : '<span class="tag">' + esc(SITUACOES[u.situacao]) + '</span>') + '</div>' +
+  return '<section class="card unif"><div class="unif-top"><h3>' + esc(nomeUnif(u)) + '</h3>' + (u.situacao === 'pronto' ? '' : '<span class="tag">' + esc(SITUACOES[u.situacao]) + '</span>') + '</div>' +
     (linha ? '<p class="mudo">' + esc(linha) + '</p>' : '') +
-    (f ? '<button class="unif-foto" data-a="verUnif" data-n="' + u.num + '" aria-label="Ver o molde completo do ' + u.num + 'º uniforme"><img src="' + esc(f.foto) + '" alt="' + u.num + 'º uniforme do Futebas, frente e costas" loading="lazy"></button>'
+    (f ? '<button class="unif-foto" data-a="verUnif" data-u="' + esc(u.id) + '" aria-label="Ver o molde completo do uniforme da ' + esc(nomeUnif(u)) + '"><img src="' + esc(f.foto) + '" alt="Uniforme da ' + esc(nomeUnif(u)) + ', frente e costas" loading="lazy"></button>'
        : '<div class="unif-vazio">' + ICONE_CAMISA() + '<span>' + (u.situacao === 'pronto' ? 'Sem foto ainda' : 'A foto entra aqui quando ficar pronto') + '</span></div>') +
     (u.obs ? '<p>' + esc(u.obs) + '</p>' : '') +
     (ps.length ? '<div class="rot">Quem fez (' + ps.length + ')</div><ul class="elenco-u">' + ps.map(function(p){
       return '<li><span class="nm">' + esc(p.nome) + '</span>' + (p.num ? '<span class="num">' + esc(p.num) + '</span>' : '') + '</li>';
     }).join('') + '</ul>' : '<p class="mudo">Lista de quem fez: ainda vazia.</p>') +
-    '<button class="btn" data-a="editarUnif" data-u="' + esc(u.id) + '">Editar o ' + u.num + 'º uniforme</button></section>';
+    '<button class="btn" data-a="editarUnif" data-u="' + esc(u.id) + '">Editar ' + esc(nomeUnif(u).toLowerCase()) + '</button></section>';
 }
 /* Artilheiro de cada mês (de todos os dias guardados) e os maiores artilheiros de sempre */
 function vCampeoes(dias, jogos){
@@ -1047,14 +1048,16 @@ function lerPessoasUnif(txt){
 function folhaUnif(u){
   var sel = Object.keys(SITUACOES).map(function(k){ return '<option value="' + k + '"' + (u.situacao === k ? ' selected' : '') + '>' + SITUACOES[k] + '</option>'; }).join('');
   var txt = pessoasOrdem(u).map(function(p){ return p.nome + (p.num ? ' - ' + p.num : ''); }).join('\n');
-  openSheet('<h3>' + u.num + 'º uniforme</h3><form class="col-btns" data-f="unif" data-u="' + esc(u.id) + '">' +
+  openSheet('<h3>' + esc(nomeUnif(u)) + '</h3><form class="col-btns" data-f="unif" data-u="' + esc(u.id) + '">' +
+    '<label class="rot" for="uTemp">Temporada (ano)</label><input type="text" inputmode="numeric" id="uTemp" maxlength="4" value="' + u.temporada + '">' +
     '<label class="rot" for="uSit">Situação</label><select id="uSit">' + sel + '</select>' +
     '<label class="rot" for="uQuando">Mês em que ficou pronto (ou previsão)</label><input type="month" id="uQuando" value="' + esc(u.quando) + '">' +
     '<label class="rot" for="uObs">Observação (opcional)</label><input type="text" id="uObs" maxlength="120" value="' + esc(u.obs) + '" placeholder="Ex.: preto com detalhes dourados">' +
     '<label class="rot" for="uLista">Quem fez: um por linha, "Nome - número"</label><textarea id="uLista" placeholder="Gustavo - 7&#10;Nildinho - 3">' + esc(txt) + '</textarea>' +
     '<button class="btn prim bloco">Salvar</button></form>' +
-    '<button class="btn perigo bloco" data-a="apagarUnif" data-u="' + esc(u.id) + '">Apagar o ' + u.num + 'º uniforme</button><button class="btn bloco" data-a="fechar">Cancelar</button>');
+    '<button class="btn perigo bloco" data-a="apagarUnif" data-u="' + esc(u.id) + '">Apagar ' + esc(nomeUnif(u).toLowerCase()) + '</button><button class="btn bloco" data-a="fechar">Cancelar</button>');
 }
+function nomeUnif(u){ return 'Temporada ' + u.temporada; }
 function unifPor(id){ return S.sobre.uniformes.filter(function(u){ return u.id === id; })[0]; }
 
 function render(){
@@ -1404,18 +1407,19 @@ var A = {
       '<button class="btn prim bloco">Salvar</button></form><button class="btn bloco" data-a="fechar">Cancelar</button>');
   },
   verUnif: function(b){
-    var n = +b.dataset.n, f = FOTOS_UNIF[n]; if (!f) return;
-    openSheet('<h3>' + n + 'º uniforme</h3><p class="mudo">Molde enviado para a confecção.</p><div class="unif-foto molde"><img src="' + esc(f.molde || f.foto) + '" alt="Molde completo do ' + n + 'º uniforme: frente, costas, gola e mangas"></div><button class="btn bloco" data-a="fechar">Fechar</button>');
+    var u = unifPor(b.dataset.u), f = u && FOTOS_UNIF[u.num]; if (!f) return;
+    openSheet('<h3>' + esc(nomeUnif(u)) + '</h3><p class="mudo">Molde enviado para a confecção.</p><div class="unif-foto molde"><img src="' + esc(f.molde || f.foto) + '" alt="Molde completo do uniforme da ' + esc(nomeUnif(u)) + ': frente, costas, gola e mangas"></div><button class="btn bloco" data-a="fechar">Fechar</button>');
   },
   novoUnif: function(){
     var n = S.sobre.uniformes.reduce(function(m, u){ return Math.max(m, u.num); }, 0) + 1;
-    var u = {id:'u' + uid8(), num:n, quando:'', situacao:'decisao', obs:'', pessoas:[]};
+    var t = S.sobre.uniformes.reduce(function(m, u){ return Math.max(m, u.temporada); }, 2024) + 1;
+    var u = {id:'u' + uid8(), num:n, temporada:t, quando:'', situacao:'decisao', obs:'', pessoas:[]};
     S.sobre.uniformes.push(u); commit(); folhaUnif(u);
   },
   editarUnif: function(b){ var u = unifPor(b.dataset.u); if (u) folhaUnif(u); },
   apagarUnif: function(b){
     var u = unifPor(b.dataset.u); if (!u) return;
-    confirmar('Apagar o ' + u.num + 'º uniforme?', 'Some da aba Futebas, junto com a lista de quem fez.', 'confApagarUnif', 'Apagar', ' data-u="' + esc(u.id) + '"');
+    confirmar('Apagar ' + nomeUnif(u).toLowerCase() + '?', 'Some da aba Futebas, junto com a lista de quem fez.', 'confApagarUnif', 'Apagar', ' data-u="' + esc(u.id) + '"');
   },
   confApagarUnif: function(b){
     S.sobre.uniformes = S.sobre.uniformes.filter(function(u){ return u.id !== b.dataset.u; });
@@ -1474,6 +1478,7 @@ document.addEventListener('submit', function(e){
     var u = unifPor(f.dataset.u);
     if (u){
       u.situacao = $('#uSit').value;
+      var tp = parseInt($('#uTemp').value, 10); if (tp >= 2000 && tp <= 2100) u.temporada = tp;
       u.quando = $('#uQuando').value || '';
       u.obs = $('#uObs').value.trim().slice(0, 120);
       u.pessoas = lerPessoasUnif($('#uLista').value);
