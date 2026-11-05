@@ -46,8 +46,9 @@
 :root[data-tema="claro"] .escudo,:root[data-tema="claro"] .escudo-g{mix-blend-mode:normal}
 :root[data-tema="claro"] .cor-branco .colete,:root[data-tema="claro"] .swatch{box-shadow:0 0 0 1px var(--line)}
 .topo-dir{display:flex;align-items:center;gap:4px;flex:none}
-.bt-tema{appearance:none;border:0;background:none;color:var(--muted);width:44px;height:44px;border-radius:12px;display:grid;place-items:center;cursor:pointer}
-.bt-tema svg{width:22px;height:22px}
+.bt-tema{appearance:none;border:1px solid var(--line);background:var(--surface);color:var(--ink);width:40px;height:40px;border-radius:50%;display:grid;place-items:center;cursor:pointer;flex:none}
+.bt-tema:active{transform:scale(.94)}
+.bt-tema svg{width:20px;height:20px}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.4;-webkit-tap-highlight-color:transparent}
@@ -73,9 +74,18 @@ h2{font-size:28px} h3{font-size:24px}
 .escudo-g{width:130px;height:auto;align-self:center;mix-blend-mode:lighten}
 .marca{font-family:var(--f-display);font-weight:800;font-size:30px;line-height:.95;text-transform:uppercase;letter-spacing:.02em;overflow-wrap:anywhere}
 .data{color:var(--muted);font-size:14px;font-weight:600;text-transform:capitalize}
-.selo{appearance:none;background:none;border:0;padding:8px 0;min-height:44px;cursor:pointer;font:600 12px var(--f-body);color:var(--muted);display:flex;align-items:center;gap:6px;white-space:nowrap}
-.selo i{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:none}
-.selo.conta i{background:var(--accent)} .selo.erro i{background:var(--danger)} .selo.exemplo i{background:var(--digit)}
+/* Conta no topo: avatar redondo (inicial do e-mail no administrador, ícone de pessoa no visitante) com bolinha de situação */
+.selo{appearance:none;background:none;border:0;padding:2px;cursor:pointer;display:grid;place-items:center;min-width:44px;min-height:44px;flex:none}
+.avatar{position:relative;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font:800 19px/1 var(--f-display);text-transform:uppercase;background:var(--accent);color:var(--accent-i);flex:none}
+.avatar.visit{background:var(--surface);color:var(--ink);border:1px solid var(--line)}
+.avatar svg{width:22px;height:22px}
+.avatar .pt{position:absolute;right:-1px;bottom:-1px;width:12px;height:12px;border-radius:50%;border:2px solid var(--bg);background:#2fb344}
+.avatar .pt.env{background:var(--digit)} .avatar .pt.off{background:var(--danger)}
+.avatar.g{width:56px;height:56px;font-size:26px} .avatar.g svg{width:30px;height:30px}
+.selo-txt{appearance:none;border:1px solid var(--accent);background:none;color:var(--accent);font:700 14px var(--f-body);border-radius:999px;padding:8px 14px;min-height:40px;cursor:pointer;white-space:nowrap}
+.selo-txt.exemplo{border-color:var(--digit);color:var(--ink)}
+.conta-top{display:flex;align-items:center;gap:12px}
+.conta-top b{display:block;overflow-wrap:anywhere}
 
 .rot{font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
 .mudo{color:var(--muted);font-size:14px}
@@ -940,7 +950,7 @@ function vElencoVisitante(){
     }).join('') + '</ul>';
   }
   var ms = mensalistas(), av = avulsosFixos();
-  if (!S.jogadores.length) return '<div class="vazio"><h2>Elenco</h2><p>Os nomes ainda não carregaram. Confira a internet e toque em "Visitante", lá em cima, para atualizar.</p></div>';
+  if (!S.jogadores.length) return '<div class="vazio"><h2>Elenco</h2><p>Os nomes ainda não carregaram. Confira a internet e toque no ícone de pessoa, lá em cima, para atualizar.</p></div>';
   var h = '<section class="bloco-f"><div class="rot">Mensalistas (' + ms.length + ')</div>' + (ms.length ? lista(ms) : '<p class="mudo">Nenhum mensalista.</p>') + '</section>';
   if (av.length) h += '<section class="bloco-f"><div class="rot">Avulsos (' + av.length + ')</div><p class="mudo">Quem joga às vezes sem ser mensalista.</p>' + lista(av) + '</section>';
   return h + '<p class="mudo">Gols somam todos os dias guardados no app.</p>';
@@ -1710,10 +1720,20 @@ function temDados(st){ return st.jogadores.length || st.dia.jogos.length || st.h
 function lerMarca(){ try{ return JSON.parse(localStorage.getItem(LS_NUVEM)) || {}; }catch(e){ return {}; } }
 function gravarMarca(base){ try{ localStorage.setItem(LS_NUVEM, JSON.stringify({base:base, pendente:pendente})); }catch(e){} }
 
+var ICON_PESSOA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8.5" r="3.6"/><path d="M5 20c.6-3.6 3.5-5.8 7-5.8s6.4 2.2 7 5.8"/></svg>';
+/* Avatar da conta: inicial do e-mail (administrador) ou pessoa (visitante); g = grande, para o menu */
+function htmlAvatar(g){
+  if (visitante()) return '<span class="avatar visit' + (g ? ' g' : '') + '">' + ICON_PESSOA + '</span>';
+  var ini = ((usuario && usuario.email) || '?').charAt(0);
+  var pt = g ? '' : '<i class="pt' + (nuvem === 'enviando' ? ' env' : nuvem === 'offline' ? ' off' : '') + '"></i>';
+  return '<span class="avatar' + (g ? ' g' : '') + '">' + esc(ini) + pt + '</span>';
+}
 function htmlSelo(){
-  var st = demo ? ['exemplo','Exemplo'] : visitante() ? ['conta','Visitante'] : !usuario ? ['local','Salvo neste aparelho']
-    : nuvem === 'enviando' ? ['conta','Sincronizando…'] : nuvem === 'offline' ? ['erro','Sem internet · envia depois'] : ['conta','Sincronizado'];
-  return '<button class="selo ' + st[0] + '" id="selo" data-a="conta"><i></i><span>' + st[1] + '</span></button>';
+  if (demo) return '<button class="selo-txt exemplo" id="selo" data-a="conta">Exemplo</button>';
+  if (visitante()) return '<button class="selo" id="selo" data-a="conta" aria-label="Conta: você é visitante">' + htmlAvatar() + '</button>';
+  if (!usuario) return '<button class="selo-txt" id="selo" data-a="conta">Entrar</button>';
+  var sit = nuvem === 'enviando' ? 'sincronizando' : nuvem === 'offline' ? 'sem internet, envia depois' : 'sincronizado';
+  return '<button class="selo" id="selo" data-a="conta" aria-label="Sua conta (' + sit + ')" title="' + esc((usuario.email || '') + ' · ' + sit) + '">' + htmlAvatar() + '</button>';
 }
 function atualizarSelo(){ var el = $('#selo'); if (el) el.outerHTML = htmlSelo(); }
 /* Não redesenha a tela enquanto alguém digita; redesenha quando sair do campo (ou tenta de novo em 3 s) */
@@ -1871,7 +1891,7 @@ function entrar(email, senha){
 }
 A.conta = function(){
   if (visitante()){
-    openSheet('<h3>Você é visitante</h3><p class="mudo">Pode ver o resumo, o elenco e as estatísticas, e sortear times. Nada do que fizer aqui muda os dados do Futebas.</p>' +
+    openSheet('<div class="conta-top">' + htmlAvatar(true) + '<div><h3>Visitante</h3><span class="mudo">Só visualização</span></div></div><p class="mudo">Pode ver o resumo, o elenco e as estatísticas, e sortear times. Nada do que fizer aqui muda os dados do Futebas.</p>' +
       (usuario ? '<p class="mudo">Conectado como <b>' + esc(usuario.email || '') + '</b>: dá para voltar a ser administrador sem digitar a senha.</p>' : '') +
       '<button class="btn prim bloco" data-a="vsAtualizar">Atualizar os dados</button><button class="btn bloco" data-a="entrarAdmin">' + (usuario ? 'Voltar a ser administrador' : 'Entrar como administrador') + '</button>' +
       (usuario ? '<button class="btn bloco perigo" data-a="sair">Sair da conta</button>' : '<button class="btn bloco" data-a="voltarInicio">Voltar à tela de entrada</button>') + '<button class="btn bloco" data-a="fechar">Fechar</button>');
@@ -1886,9 +1906,9 @@ A.conta = function(){
     return;
   }
   var txt = nuvem === 'offline' ? 'Sem internet agora. As mudanças ficam neste aparelho e vão para a internet quando a conexão voltar.' : pendente ? 'Enviando as últimas mudanças…' : 'Tudo guardado na internet.';
-  openSheet('<h3>Sua conta</h3><p>Conectado como <b>' + esc(usuario.email || '') + '</b> (administrador).</p><p class="mudo">' + txt + '</p>' +
+  openSheet('<div class="conta-top">' + htmlAvatar(true) + '<div><b>' + esc(usuario.email || '') + '</b><span class="mudo">Administrador</span></div></div><p class="mudo">' + txt + '</p>' +
     '<button class="btn prim bloco" data-a="sincAgora">Sincronizar agora</button>' +
-    '<button class="btn bloco" data-a="verComoVisitante">Ver como visitante</button><p class="mudo">Mostra o app igual o pessoal vê. Para voltar, toque em "Visitante" lá em cima e em "Voltar a ser administrador".</p>' +
+    '<button class="btn bloco" data-a="verComoVisitante">Ver como visitante</button><p class="mudo">Mostra o app igual o pessoal vê. Para voltar, toque no ícone de pessoa lá em cima e em "Voltar a ser administrador".</p>' +
     '<button class="btn bloco perigo" data-a="sair">Sair da conta</button><p class="mudo">Volta para a tela de entrada. Os dados continuam guardados na internet.</p><button class="btn bloco" data-a="fechar">Fechar</button>');
 };
 A.sincAgora = function(){ closeSheet(); sincronizar(true); };
