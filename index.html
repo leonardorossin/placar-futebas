@@ -211,6 +211,17 @@ td.pts{font:800 20px var(--f-display)}
 .linha-bt:active{background:var(--surface-2)}
 .perigo-link{color:var(--danger);align-self:center}
 .jogos .l1{display:flex;gap:10px;align-items:baseline;font-weight:700}
+/* Cartão do jogo: "JOGO 1" em cima, times dos lados e o placar numa plaquinha dourada no meio, gols embaixo de cada time */
+.jg-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.jg-n{font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.jg-pl{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;margin-top:6px}
+.jg-t{display:flex;align-items:center;gap:7px;font-weight:700;min-width:0}
+.jg-t span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.jg-t.fora{justify-content:flex-end}
+.jg-placa{background:var(--accent);color:var(--accent-i);border-radius:10px;padding:5px 12px;font:800 24px/1 var(--f-display);font-variant-numeric:tabular-nums;white-space:nowrap;letter-spacing:.02em}
+.jg-placa i{font-style:normal;font-size:16px;opacity:.7;margin:0 5px}
+.jg-gols{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:6px;font-size:13px;color:var(--muted);line-height:1.3}
+.jg-gols span:last-child{text-align:right}
 .jogos .l1 .n{font:800 16px var(--f-display);color:var(--muted)}
 .tag{font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em}
 details.dia{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px 14px}
@@ -525,21 +536,22 @@ function jogosDoMes(mes){ return diasDoMes(mes).reduce(function(a, d){ return a.
 /* ---------- textos do WhatsApp ---------- */
 function linhaPlacar(j, dia){ var p = placar(j); return nomeTime(j.casa, dia) + ' ' + p.casa + ' x ' + p.fora + ' ' + nomeTime(j.fora, dia); }
 /* Uma linha por time, sem repetir o nome: "Time 1: Leo (3), Carlão (avulso, 2), Dudu, gol contra" */
-function golsPorTime(j, dia){
-  var por = {};
-  j.gols.forEach(function(g){ (por[g.time] = por[g.time] || []).push(g); });
-  return [j.casa, j.fora].filter(function(t){ return por[t]; }).map(function(t){
-    var cont = {}, ordem = [], contra = 'gol contra';
-    por[t].forEach(function(g){
-      var k = g.contra ? contra : g.nome;
-      if (!cont[k]){ cont[k] = {n:0, avulso:!g.contra && ehAvulsoFixo(g.jogador)}; ordem.push(k); }
-      cont[k].n++;
-    });
-    return nomeTime(t, dia) + ': ' + ordem.map(function(k){
-      var c = cont[k], extra = [c.avulso ? 'avulso' : '', c.n > 1 ? c.n : ''].filter(Boolean).join(', ');
-      return extra ? k + ' (' + extra + ')' : k;
-    }).join(', ');
+/* Gols de um time no jogo, sem repetir nome: "Leo (3), Carlão (avulso, 2), gol contra" ('' se não fez gol) */
+function golsDoTime(j, t){
+  var cont = {}, ordem = [];
+  j.gols.forEach(function(g){
+    if (g.time !== t) return;
+    var k = g.contra ? 'gol contra' : g.nome;
+    if (!cont[k]){ cont[k] = {n:0, avulso:!g.contra && ehAvulsoFixo(g.jogador)}; ordem.push(k); }
+    cont[k].n++;
   });
+  return ordem.map(function(k){
+    var c = cont[k], extra = [c.avulso ? 'avulso' : '', c.n > 1 ? c.n : ''].filter(Boolean).join(', ');
+    return extra ? k + ' (' + extra + ')' : k;
+  }).join(', ');
+}
+function golsPorTime(j, dia){
+  return [j.casa, j.fora].map(function(t){ var g = golsDoTime(j, t); return g ? nomeTime(t, dia) + ': ' + g : ''; }).filter(Boolean);
 }
 function txtGol(j, g){
   return ['⚽ *GOL DO ' + nomeTime(g.time).toUpperCase() + '!*',
@@ -851,6 +863,16 @@ function vTimes(){
   return h;
 }
 
+var CAMISA_PATH = '<path d="M8.5 3 3 6.2l2.2 4.3 2.3-1.1V21h9V9.4l2.3 1.1L21 6.2 15.5 3c-.6 1.7-1.9 2.7-3.5 2.7S9.1 4.7 8.5 3z"/>';
+function svgColete(cor){ return '<svg class="colete cor-' + cor + '" viewBox="0 0 24 24" aria-hidden="true">' + CAMISA_PATH + '</svg>'; }
+function cartaoJogo(j, dia){
+  var p = placar(j), gc = golsDoTime(j, j.casa), gf = golsDoTime(j, j.fora);
+  return '<div class="jg-top"><span class="jg-n">Jogo ' + j.n + '</span>' + (j.fim ? '' : '<span class="tag">Agora</span>') + '</div>' +
+    '<div class="jg-pl"><span class="jg-t casa">' + svgColete(corTime(j.casa, dia)) + '<span>' + esc(nomeTime(j.casa, dia)) + '</span></span>' +
+    '<span class="jg-placa" aria-label="' + p.casa + ' a ' + p.fora + '">' + p.casa + '<i>x</i>' + p.fora + '</span>' +
+    '<span class="jg-t fora"><span>' + esc(nomeTime(j.fora, dia)) + '</span>' + svgColete(corTime(j.fora, dia)) + '</span></div>' +
+    (gc || gf ? '<div class="jg-gols"><span>' + esc(gc) + '</span><span>' + esc(gf) + '</span></div>' : '');
+}
 function vResumo(){
   var d = S.dia;
   if (!d.jogos.length){
@@ -872,8 +894,7 @@ function vResumo(){
     return ed ? '<li class="cl"><button class="linha-bt" data-a="golsDe" data-p="' + esc(a.id) + '">' + miolo + '</button></li>' : '<li>' + miolo + '</li>';
   }).join('') + '</ol>' : '<p class="mudo">' + (soMensal ? 'Nenhum gol de mensalista ainda.' : 'Nenhum gol marcado ainda.') + '</p>') + '</section>';
   h += '<section class="bloco-f"><div class="rot">Jogos</div><ul class="jogos">' + d.jogos.map(function(j){
-    var mk = golsPorTime(j).map(function(s){ return '<span class="mudo" style="display:block">' + esc(s) + '</span>'; }).join('');
-    var miolo = '<div class="l1"><span class="n">' + j.n + '</span><span>' + esc(linhaPlacar(j)) + '</span>' + (j.fim ? '' : '<span class="tag">Agora</span>') + '</div>' + mk;
+    var miolo = cartaoJogo(j);
     return ed ? '<li class="cl"><button class="linha-bt" data-a="verJogo" data-n="' + j.n + '">' + miolo + '</button></li>' : '<li>' + miolo + '</li>';
   }).join('') + '</ul>' + (ed ? '<p class="mudo">Toque num jogo ou num artilheiro para corrigir ou apagar gols.</p>' : '') + '</section>';
   if (ed) h += '<div class="col-btns"><a class="btn zap" href="' + esc(wa(txtResumo(d, soMensal))) + '" target="_blank" rel="noopener">' + ICON.enviar + 'Mandar resumo no grupo' + rotFiltro() + '</a><button class="btn" data-a="copiar" data-txt="resumo">Copiar o texto do resumo</button><button class="btn perigo" data-a="encerrarDia">Encerrar o dia</button>' +
