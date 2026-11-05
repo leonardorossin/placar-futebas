@@ -44,7 +44,6 @@
   color-scheme:light;
 }
 :root[data-tema="claro"] .escudo,:root[data-tema="claro"] .escudo-g{mix-blend-mode:normal}
-:root[data-tema="claro"] .cor-branco .colete,:root[data-tema="claro"] .swatch{box-shadow:0 0 0 1px var(--line)}
 .topo-dir{display:flex;align-items:center;gap:4px;flex:none}
 .bt-tema{appearance:none;border:1px solid var(--line);background:var(--surface);color:var(--ink);width:40px;height:40px;border-radius:50%;display:grid;place-items:center;cursor:pointer;flex:none}
 .bt-tema:active{transform:scale(.94)}
@@ -117,7 +116,9 @@ h2{font-size:28px} h3{font-size:24px}
 .lado-nome{display:flex;align-items:center;gap:7px;font-weight:700;font-size:15px;max-width:100%;min-width:0}
 .lado-nome .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .vs{font:800 26px var(--f-display);color:color-mix(in srgb,var(--board-ink) 35%,transparent);padding-bottom:26px}
-.colete{width:13px;height:13px;border-radius:50%;background:var(--c);flex:none;box-shadow:0 0 0 2px color-mix(in srgb,currentColor 22%,transparent)}
+/* Cor do colete: uma camisetinha da cor do time, com contorno fino para aparecer em qualquer fundo */
+.colete{width:17px;height:17px;flex:none;overflow:visible}
+.colete path,.swatch path{fill:var(--c);stroke:color-mix(in srgb,currentColor 45%,transparent);stroke-width:1.3;stroke-linejoin:round}
 
 /* Campo: botões de gol */
 .dica{font-size:14px;color:var(--muted);text-align:center}
@@ -157,7 +158,9 @@ h2{font-size:28px} h3{font-size:24px}
 .seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-i)}
 .time-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px 14px 14px;display:flex;flex-direction:column;gap:10px}
 .time-head{display:flex;align-items:center;gap:10px}
-.swatch{appearance:none;width:32px;height:32px;border-radius:50%;background:var(--c);border:2px solid var(--line);flex:none;cursor:pointer}
+.swatch{appearance:none;width:40px;height:40px;border:0;background:none;padding:0;display:grid;place-items:center;flex:none;cursor:pointer;color:var(--ink)}
+.swatch svg{width:36px;height:36px;overflow:visible}
+.swatch:active{transform:scale(.92)}
 .tnome{flex:1;min-width:0;border:0;border-bottom:1px dashed var(--line);border-radius:0;background:transparent;color:var(--ink);font:800 24px var(--f-display);text-transform:uppercase;letter-spacing:.03em;padding:2px 0}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
 .chip{appearance:none;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);border-radius:999px;padding:8px 14px;font:600 15px var(--f-body);min-height:40px;cursor:pointer;max-width:100%;overflow-wrap:anywhere}
@@ -169,7 +172,7 @@ h2{font-size:28px} h3{font-size:24px}
 .filtros .chip[aria-pressed="true"] b{color:var(--accent-i)}
 .av{font-size:.8em;font-weight:600;color:var(--accent);white-space:nowrap;text-transform:none;letter-spacing:0}
 .btn-time{justify-content:flex-start}
-.btn-time .colete{width:16px;height:16px}
+.btn-time .colete{width:20px;height:20px}
 .cores{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
 .cores button{appearance:none;border:2px solid var(--line);background:var(--c);color:var(--ci);border-radius:12px;min-height:56px;font:700 13px var(--f-body);cursor:pointer}
 .cores button[aria-pressed="true"]{outline:3px solid var(--ink);outline-offset:2px}
@@ -721,14 +724,16 @@ function closeSheet(){
   $('#sheetBody').innerHTML = '';
   document.body.classList.remove('travado');
 }
-function toast(msg, acoes){
+/* ms: quanto tempo fica na tela (padrão 7 s com botões, 2,8 s sem). Tocar no aviso (fora dos botões) fecha na hora. */
+function toast(msg, acoes, ms){
   var el = $('#toast');
   el.innerHTML = '<span class="tx">' + esc(msg) + '</span>' + (acoes ? '<div class="ta">' + acoes + '</div>' : '');
   el.hidden = false;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(function(){ el.hidden = true; }, acoes ? 7000 : 2800);
+  toastTimer = setTimeout(function(){ el.hidden = true; }, ms || (acoes ? 7000 : 2800));
 }
-function esconderToast(){ $('#toast').hidden = true; }
+function esconderToast(){ clearTimeout(toastTimer); $('#toast').hidden = true; }
+$('#toast').addEventListener('click', function(e){ if (!e.target.closest('button, a')) esconderToast(); });
 
 /* ---------- telas ---------- */
 function htmlTopo(){
@@ -756,7 +761,7 @@ function vJogo(){
 function vEmJogo(j){
   var p = placar(j);
   function lado(tid, n){
-    return '<div class="lado"><div class="dig" aria-label="' + n + ' gols">' + n + '</div><div class="lado-nome"><span class="colete cor-' + corTime(tid) + '"></span><span class="t">' + esc(nomeTime(tid)) + '</span></div></div>';
+    return '<div class="lado"><div class="dig" aria-label="' + n + ' gols">' + n + '</div><div class="lado-nome"><svg class="colete cor-' + corTime(tid) + '" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 3 3 6.2l2.2 4.3 2.3-1.1V21h9V9.4l2.3 1.1L21 6.2 15.5 3c-.6 1.7-1.9 2.7-3.5 2.7S9.1 4.7 8.5 3z"/></svg><span class="t">' + esc(nomeTime(tid)) + '</span></div></div>';
   }
   var golsJ = {};
   j.gols.forEach(function(g){ if (g.jogador) golsJ[g.jogador] = (golsJ[g.jogador] || 0) + 1; });
@@ -768,7 +773,7 @@ function vEmJogo(j){
     return '<div class="coluna cor-' + corTime(tid) + '"><div class="coluna-topo">' + esc(nomeTime(tid)) + '</div>' + (bts || '<p class="mudo">Sem jogadores. Ajuste na aba Times.</p>') + '</div>';
   }
   var lances = j.gols.length ? '<ul class="lances">' + j.gols.map(function(g){
-    return '<li class="lance"><span class="quem"><span class="colete cor-' + corTime(g.time) + '"></span><span class="nm">' + (g.contra ? 'Gol contra' : nomeHtml(g.jogador, g.nome)) + '</span><span class="mudo">' + esc(nomeTime(g.time)) + '</span></span><button class="x" data-a="tirarGol" data-g="' + g.id + '" aria-label="Apagar este gol">' + ICON.x + '</button></li>';
+    return '<li class="lance"><span class="quem"><svg class="colete cor-' + corTime(g.time) + '" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 3 3 6.2l2.2 4.3 2.3-1.1V21h9V9.4l2.3 1.1L21 6.2 15.5 3c-.6 1.7-1.9 2.7-3.5 2.7S9.1 4.7 8.5 3z"/></svg><span class="nm">' + (g.contra ? 'Gol contra' : nomeHtml(g.jogador, g.nome)) + '</span><span class="mudo">' + esc(nomeTime(g.time)) + '</span></span><button class="x" data-a="tirarGol" data-g="' + g.id + '" aria-label="Apagar este gol">' + ICON.x + '</button></li>';
   }).join('') + '</ul>' : '<p class="mudo">Nenhum gol ainda.</p>';
 
   return '<section class="placar" aria-label="Placar"><div class="placar-top"><span>Jogo ' + j.n + '</span><span>Em andamento</span></div>' +
@@ -791,7 +796,7 @@ function vProximo(){
   if (ult){
     var p = placar(ult), mk = golsPorTime(ult).join('\n');
     h += '<section class="card"><div class="rot">Fim do jogo ' + ult.n + '</div>' +
-      '<div class="res"><span class="colete cor-' + corTime(ult.casa) + '"></span>' + esc(nomeTime(ult.casa)) + ' <span class="n">' + p.casa + '</span> x <span class="n">' + p.fora + '</span> ' + esc(nomeTime(ult.fora)) + '<span class="colete cor-' + corTime(ult.fora) + '"></span></div>' +
+      '<div class="res"><svg class="colete cor-' + corTime(ult.casa) + '" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 3 3 6.2l2.2 4.3 2.3-1.1V21h9V9.4l2.3 1.1L21 6.2 15.5 3c-.6 1.7-1.9 2.7-3.5 2.7S9.1 4.7 8.5 3z"/></svg>' + esc(nomeTime(ult.casa)) + ' <span class="n">' + p.casa + '</span> x <span class="n">' + p.fora + '</span> ' + esc(nomeTime(ult.fora)) + '<svg class="colete cor-' + corTime(ult.fora) + '" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 3 3 6.2l2.2 4.3 2.3-1.1V21h9V9.4l2.3 1.1L21 6.2 15.5 3c-.6 1.7-1.9 2.7-3.5 2.7S9.1 4.7 8.5 3z"/></svg></div>' +
       (mk ? '<p class="mudo" style="white-space:pre-line">' + esc(mk) + '</p>' : '') +
       (ult.passou ? '<p class="mudo">Empate. ' + esc(nomeTime(ult.passou)) + ' passou.</p>' : '') +
       '<a class="btn zap bloco" href="' + esc(wa(txtFim(ult))) + '" target="_blank" rel="noopener">' + ICON.enviar + 'Mandar resultado no grupo</a></section>';
@@ -799,7 +804,7 @@ function vProximo(){
   var dz = d.desempate;
   if (dz && timePor(dz.times[0]) && timePor(dz.times[1])){
     return h + '<section class="card"><div class="rot">Empate no jogo ' + dz.jogo + '</div><h3>Quem passa?</h3><p class="mudo">Escolha o time que segue em campo para o próximo jogo.</p><div class="col-btns">' +
-      dz.times.map(function(t){ return '<button class="btn btn-time grande cor-' + corTime(t) + '" data-a="passa" data-t="' + t + '"><span class="colete"></span>' + esc(nomeTime(t)) + '</button>'; }).join('') + '</div></section>';
+      dz.times.map(function(t){ return '<button class="btn btn-time grande cor-' + corTime(t) + '" data-a="passa" data-t="' + t + '"><svg class="colete" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 3 3 6.2l2.2 4.3 2.3-1.1V21h9V9.4l2.3 1.1L21 6.2 15.5 3c-.6 1.7-1.9 2.7-3.5 2.7S9.1 4.7 8.5 3z"/></svg>' + esc(nomeTime(t)) + '</button>'; }).join('') + '</div></section>';
   }
   var esperando = d.times.filter(function(t){ return t.id !== prox.casa && t.id !== prox.fora; }).map(function(t){ return t.nome; });
   h += '<section class="card"><div class="rot">Jogo ' + (d.jogos.length + 1) + '</div>' +
@@ -833,7 +838,7 @@ function vTimes(){
   if (j) h += '<p class="mudo">Jogo ' + j.n + ' em andamento. Mudanças aqui já valem no jogo.</p>';
   h += '<div class="linha-rot"><span class="rot">Quantos times</span><div class="seg">' + [2,3,4].map(function(n){ return '<button data-a="qtdTimes" data-v="' + n + '" aria-pressed="' + (d.times.length === n) + '">' + n + '</button>'; }).join('') + '</div></div>';
   h += d.times.map(function(t){
-    return '<section class="time-card cor-' + t.cor + '"><div class="time-head"><button class="swatch" data-a="cor" data-t="' + t.id + '" aria-label="Trocar a cor do colete"></button>' +
+    return '<section class="time-card cor-' + t.cor + '"><div class="time-head"><button class="swatch" data-a="cor" data-t="' + t.id + '" aria-label="Trocar a cor do colete"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 3 3 6.2l2.2 4.3 2.3-1.1V21h9V9.4l2.3 1.1L21 6.2 15.5 3c-.6 1.7-1.9 2.7-3.5 2.7S9.1 4.7 8.5 3z"/></svg></button>' +
       '<input class="tnome" id="tnome-' + t.id + '" data-t="' + t.id + '" value="' + esc(t.nome) + '" maxlength="20" aria-label="Nome do time"><span class="mudo forca">' + t.jogadores.length + ' · força ' + forca(t) + '</span></div>' +
       '<div class="chips">' + (t.jogadores.map(chip).join('') || '<span class="mudo">Ninguém ainda. Toque num nome em "Sem time".</span>') + '</div></section>';
   }).join('');
@@ -859,11 +864,11 @@ function vResumo(){
     '</div><div class="dest"><span class="rot">Artilharia</span>' +
     (topo.length ? '<span class="v">' + topo.map(function(a){ return nomeHtml(a.id, a.nome); }).join(', ') + '</span><span class="s">' + pl(topo[0].gols, 'gol', 'gols') + '</span>' : '<span class="v">—</span><span class="s">Sem gols ainda</span>') + '</div></div>';
   h += '<section class="bloco-f"><div class="rot">Classificação</div><div class="tabela-wrap"><table><thead><tr><th>Time</th><th>P</th><th>J</th><th>V</th><th>E</th><th>D</th><th>SG</th></tr></thead><tbody>' +
-    cls.map(function(c){ var sg = c.GP - c.GC; return '<tr><td class="tm"><span class="colete cor-' + c.cor + '"></span>' + esc(c.nome) + '</td><td class="pts">' + c.P + '</td><td>' + c.J + '</td><td>' + c.V + '</td><td>' + c.E + '</td><td>' + c.D + '</td><td>' + (sg > 0 ? '+' : '') + sg + '</td></tr>'; }).join('') +
+    cls.map(function(c){ var sg = c.GP - c.GC; return '<tr><td class="tm"><svg class="colete cor-' + c.cor + '" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 3 3 6.2l2.2 4.3 2.3-1.1V21h9V9.4l2.3 1.1L21 6.2 15.5 3c-.6 1.7-1.9 2.7-3.5 2.7S9.1 4.7 8.5 3z"/></svg>' + esc(c.nome) + '</td><td class="pts">' + c.P + '</td><td>' + c.J + '</td><td>' + c.V + '</td><td>' + c.E + '</td><td>' + c.D + '</td><td>' + (sg > 0 ? '+' : '') + sg + '</td></tr>'; }).join('') +
     '</tbody></table></div></section>';
   var ed = !visitante(); /* visitante só vê: sem tocar para apagar, sem encerrar, sem mandar */
   h += '<section class="bloco-f"><div class="linha-rot"><span class="rot">Artilheiros</span>' + filtroRank() + '</div>' + (art.length ? '<ol class="rank">' + art.map(function(a){
-    var miolo = '<span class="pos">' + a.pos + 'º</span><span class="quem"><span class="colete cor-' + corTime(a.time) + '"></span><span class="nm">' + nomeHtml(a.id, a.nome) + '</span></span><span class="g">' + a.gols + '</span>';
+    var miolo = '<span class="pos">' + a.pos + 'º</span><span class="quem"><svg class="colete cor-' + corTime(a.time) + '" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 3 3 6.2l2.2 4.3 2.3-1.1V21h9V9.4l2.3 1.1L21 6.2 15.5 3c-.6 1.7-1.9 2.7-3.5 2.7S9.1 4.7 8.5 3z"/></svg><span class="nm">' + nomeHtml(a.id, a.nome) + '</span></span><span class="g">' + a.gols + '</span>';
     return ed ? '<li class="cl"><button class="linha-bt" data-a="golsDe" data-p="' + esc(a.id) + '">' + miolo + '</button></li>' : '<li>' + miolo + '</li>';
   }).join('') + '</ol>' : '<p class="mudo">' + (soMensal ? 'Nenhum gol de mensalista ainda.' : 'Nenhum gol marcado ainda.') + '</p>') + '</section>';
   h += '<section class="bloco-f"><div class="rot">Jogos</div><ul class="jogos">' + d.jogos.map(function(j){
@@ -996,7 +1001,7 @@ function vSorteioPronto(){
   var h = '<section class="bloco-f"><h2>Times sorteados</h2><p class="mudo">Só neste celular. Mande no grupo para todo mundo ver.</p></section>';
   h += vsRes.map(function(t, i){
     var cor = CORES_PADRAO[i] || 'preto', ord = t.slice().sort(function(a, b){ return nomeVS(a).localeCompare(nomeVS(b), 'pt-BR'); });
-    return '<section class="time-card cor-' + cor + '"><div class="time-head"><span class="swatch" style="cursor:auto"></span><span class="tnome" style="border:0">Time ' + (i + 1) + '</span><span class="mudo forca">' + pl(t.length, 'jogador', 'jogadores') + '</span></div>' +
+    return '<section class="time-card cor-' + cor + '"><div class="time-head"><span class="swatch" style="cursor:auto"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 3 3 6.2l2.2 4.3 2.3-1.1V21h9V9.4l2.3 1.1L21 6.2 15.5 3c-.6 1.7-1.9 2.7-3.5 2.7S9.1 4.7 8.5 3z"/></svg></span><span class="tnome" style="border:0">Time ' + (i + 1) + '</span><span class="mudo forca">' + pl(t.length, 'jogador', 'jogadores') + '</span></div>' +
       '<div class="chips">' + ord.map(function(x){ return '<span class="chip' + (x.id ? '' : ' conv') + '" style="cursor:auto">' + (x.id ? nomeHtml(x.id, x.nome) : esc(x.nome)) + '</span>'; }).join('') + '</div></section>';
   }).join('');
   return h + '<div class="col-btns"><a class="btn zap bloco grande" href="' + esc(wa(txtTimesVS())) + '" target="_blank" rel="noopener">' + ICON.enviar + 'Mandar times no grupo</a>' +
@@ -1243,7 +1248,7 @@ function marcarGol(tid, pid){
   commit(); vibrar();
   var p = placar(j);
   toast('Gol! ' + (pid ? nomeTxt(pid, g.nome) : 'Gol contra') + ' · ' + p.casa + ' x ' + p.fora,
-    '<button data-a="desfazerGol" data-g="' + g.id + '">Desfazer</button><a href="' + esc(wa(txtGol(j, g))) + '" target="_blank" rel="noopener">Mandar no grupo</a>');
+    '<button data-a="desfazerGol" data-g="' + g.id + '">Desfazer</button><a href="' + esc(wa(txtGol(j, g))) + '" target="_blank" rel="noopener">Mandar no grupo</a>', 3500);
   if (pid){
     var b = $('.jog[data-p="' + (window.CSS && CSS.escape ? CSS.escape(pid) : pid) + '"]');
     if (b){ b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash'); }
@@ -1269,7 +1274,7 @@ function refazerRodizio(){
 }
 /* Linha de gol com o X para apagar; "volta" diz qual folha reabrir depois de apagar */
 function liGol(g, extra, volta){
-  return '<li class="lance"><span class="quem"><span class="colete cor-' + corTime(g.time) + '"></span><span class="nm">' + (g.contra ? 'Gol contra' : nomeHtml(g.jogador, g.nome)) + '</span><span class="mudo">' + esc(extra) + '</span></span>' +
+  return '<li class="lance"><span class="quem"><svg class="colete cor-' + corTime(g.time) + '" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 3 3 6.2l2.2 4.3 2.3-1.1V21h9V9.4l2.3 1.1L21 6.2 15.5 3c-.6 1.7-1.9 2.7-3.5 2.7S9.1 4.7 8.5 3z"/></svg><span class="nm">' + (g.contra ? 'Gol contra' : nomeHtml(g.jogador, g.nome)) + '</span><span class="mudo">' + esc(extra) + '</span></span>' +
     '<button class="x" data-a="tirarGol" data-g="' + g.id + '" data-volta="' + esc(volta) + '" aria-label="Apagar este gol">' + ICON.x + '</button></li>';
 }
 function folhaJogo(n){
@@ -1303,7 +1308,7 @@ function abrirChip(pid){
   d.times.forEach(function(t){ if (t.jogadores.indexOf(pid) >= 0) atual = t; });
   var p = pessoa(pid);
   var h = '<h3>' + nomeHtml(pid) + '</h3>' + (p ? '<div class="rot">Nível</div>' + segNivel(p) : '') + '<div class="rot">' + (atual ? 'Mudar para' : 'Colocar no time') + '</div><div class="col-btns">' +
-    d.times.filter(function(t){ return t !== atual; }).map(function(t){ return '<button class="btn btn-time cor-' + t.cor + '" data-a="mover" data-p="' + esc(pid) + '" data-t="' + t.id + '"><span class="colete"></span>' + esc(t.nome) + '</button>'; }).join('') + '</div>';
+    d.times.filter(function(t){ return t !== atual; }).map(function(t){ return '<button class="btn btn-time cor-' + t.cor + '" data-a="mover" data-p="' + esc(pid) + '" data-t="' + t.id + '"><svg class="colete" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 3 3 6.2l2.2 4.3 2.3-1.1V21h9V9.4l2.3 1.1L21 6.2 15.5 3c-.6 1.7-1.9 2.7-3.5 2.7S9.1 4.7 8.5 3z"/></svg>' + esc(t.nome) + '</button>'; }).join('') + '</div>';
   if (atual) h += '<button class="btn" data-a="mover" data-p="' + esc(pid) + '" data-t="">Tirar do ' + esc(atual.nome) + '</button>';
   if (ehConvidado(pid)) h += '<div class="rot">Convidado de hoje</div><div class="duas"><button class="btn" data-a="virarMensal" data-p="' + esc(pid) + '">Virar mensalista</button><button class="btn" data-a="virarMensal" data-v="avulso" data-p="' + esc(pid) + '">Guardar como avulso</button></div><button class="btn perigo" data-a="tirarConv" data-p="' + esc(pid) + '">Remover convidado</button>';
   openSheet(h);
