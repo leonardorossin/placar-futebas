@@ -1,8 +1,8 @@
 /* Guarda o app no celular para abrir mesmo com internet ruim no campo.
    Páginas e arquivos do app: tenta a internet primeiro (pega a versão nova) e usa a cópia guardada se falhar.
    Fontes do Google e a biblioteca do Supabase (versão fixa): usa a cópia guardada, que não muda. */
-var CACHE = 'futebas-v28';
-var ARQUIVOS = ['/', '/manifest.webmanifest', '/icones/escudo.png', '/icones/icone-192.png', '/icones/apple-touch-icon.png', '/fotos/uniforme-2025.webp'];
+var CACHE = 'futebas-v29';
+var ARQUIVOS = ['/', '/manifest.webmanifest', '/icones/escudo.png', '/icones/icone-192.png', '/icones/apple-touch-icon.png', '/fotos/uniforme-2025.webp', '/icones/escudo-claro.webp'];
 
 self.addEventListener('install', function(e){
   e.waitUntil(caches.open(CACHE).then(function(c){ return c.addAll(ARQUIVOS); }).then(function(){ return self.skipWaiting(); }));

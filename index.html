@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#000000">
+<script>/* aplica o tema guardado antes de desenhar, para não piscar escuro */try{if(localStorage.getItem('rachao.placar.tema')==='claro'){document.documentElement.setAttribute('data-tema','claro');document.querySelector('meta[name=theme-color]').content='#f4f1ea';}}catch(e){}</script>
 <title>Placar do Futebas</title>
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/icones/apple-touch-icon.png">
@@ -30,6 +31,23 @@
   --f-body:"Barlow","Segoe UI",Roboto,system-ui,-apple-system,sans-serif;
   color-scheme:dark;
 }
+/* Tema claro (escolhido no botão de sol/lua, guardado em cada celular). O placar e os quadros de destaque
+   continuam escuros, como um placar de estádio. O dourado fica mais escuro para dar leitura no fundo claro. */
+:root[data-tema="claro"]{
+  --bg:#f4f1ea; --surface:#ffffff; --surface-2:#efe9de; --ink:#1b1712; --muted:#675f53; --line:#ddd4c4;
+  --accent:#9a6a0a; --accent-i:#ffffff; --danger:#c0392b;
+  --scrim:rgba(27,23,18,.45); --shadow:rgba(60,45,20,.18);
+  --laranja:#f76707; --laranja-i:#ffffff; --azul:#1c7ed6; --azul-i:#ffffff;
+  --amarelo:#f5b70a; --amarelo-i:#241b00; --roxo:#9c36b5; --roxo-i:#ffffff;
+  --verde:#2f9e44; --verde-i:#ffffff; --vermelho:#e03131; --vermelho-i:#ffffff;
+  --preto:#2b2824; --preto-i:#ffffff; --branco:#ffffff; --branco-i:#1a1712;
+  color-scheme:light;
+}
+:root[data-tema="claro"] .escudo,:root[data-tema="claro"] .escudo-g{mix-blend-mode:normal}
+:root[data-tema="claro"] .cor-branco .colete,:root[data-tema="claro"] .swatch{box-shadow:0 0 0 1px var(--line)}
+.topo-dir{display:flex;align-items:center;gap:4px;flex:none}
+.bt-tema{appearance:none;border:0;background:none;color:var(--muted);width:44px;height:44px;border-radius:12px;display:grid;place-items:center;cursor:pointer}
+.bt-tema svg{width:22px;height:22px}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.4;-webkit-tap-highlight-color:transparent}
@@ -390,6 +408,18 @@ function normalizar(st){
 var S, real = null, demo = false, aba = 'jogo', mesSel = hojeISO().slice(0, 7), qtdNaMao = false, soMensal = false, filtroNivel = 0, statPer = 'tudo', statOrd = 'aprov';
 var toastTimer = null, wakeLock = null;
 
+/* Tema claro/escuro: escolha de cada celular, guardada só nele */
+var LS_TEMA = 'rachao.placar.tema';
+function temaClaro(){ return document.documentElement.getAttribute('data-tema') === 'claro'; }
+function srcEscudo(){ return temaClaro() ? '/icones/escudo-claro.webp' : '/icones/escudo.png'; }
+function aplicarTema(claro){
+  if (claro) document.documentElement.setAttribute('data-tema', 'claro'); else document.documentElement.removeAttribute('data-tema');
+  var mt = document.querySelector('meta[name=theme-color]'); if (mt) mt.content = claro ? '#f4f1ea' : '#000000';
+  try{ if (claro) localStorage.setItem(LS_TEMA, 'claro'); else localStorage.removeItem(LS_TEMA); }catch(e){}
+}
+var ICON_SOL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg>';
+var ICON_LUA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg>';
+function htmlBtTema(){ var c = temaClaro(); return '<button class="bt-tema" data-a="tema" aria-label="' + (c ? 'Mudar para o tema escuro' : 'Mudar para o tema claro') + '" title="' + (c ? 'Tema escuro' : 'Tema claro') + '">' + (c ? ICON_LUA : ICON_SOL) + '</button>'; }
 function lerAdmin(){ try{ return normalizar(JSON.parse(localStorage.getItem(LS))); }catch(e){ return estadoVazio(); } }
 function lerVitrine(){ try{ return normalizar(JSON.parse(localStorage.getItem(LS_VITRINE))); }catch(e){ return estadoVazio(); } }
 var modo = null;
@@ -689,7 +719,7 @@ function esconderToast(){ $('#toast').hidden = true; }
 
 /* ---------- telas ---------- */
 function htmlTopo(){
-  var h = '<header class="topo"><div class="id"><img class="escudo" src="/icones/escudo.png" alt="Escudo do Futebas" width="54" height="60"><div><div class="marca">' + esc(S.grupo) + '</div><div class="data">' + esc(fmtData(S.dia.data)) + '</div></div></div>' + htmlSelo() + '</header>';
+  var h = '<header class="topo"><div class="id"><img class="escudo" src="' + srcEscudo() + '" alt="Escudo do Futebas" width="54" height="60"><div><div class="marca">' + esc(S.grupo) + '</div><div class="data">' + esc(fmtData(S.dia.data)) + '</div></div></div><div class="topo-dir">' + htmlBtTema() + htmlSelo() + '</div></header>';
   if (demo) h += '<div class="aviso"><span>Dados de exemplo. Nada aqui fica salvo.</span><button class="btn mini" data-a="sairExemplo">Sair do exemplo</button></div>';
   else if (visitante()) return h;
   else if (S.dia.data !== hojeISO() && S.dia.jogos.length) h += '<div class="aviso"><span>Esse placar é de ' + fmtCurta(S.dia.data) + '. Encerre aquele dia para começar o de hoje.</span><button class="btn mini" data-a="aba" data-v="resumo">Ver</button></div>';
@@ -697,7 +727,7 @@ function htmlTopo(){
 }
 
 function vBoasVindas(){
-  return '<div class="vazio"><img class="escudo-g" src="/icones/escudo.png" alt="Escudo do Futebas" width="130" height="144"><h2>Placar do Futebas</h2><p>Marque os gols tocando no nome de quem fez e mande o placar pro grupo do WhatsApp.</p>' +
+  return '<div class="vazio"><img class="escudo-g" src="' + srcEscudo() + '" alt="Escudo do Futebas" width="130" height="144"><h2>Placar do Futebas</h2><p>Marque os gols tocando no nome de quem fez e mande o placar pro grupo do WhatsApp.</p>' +
     '<ol class="passos"><li>Cadastre os mensalistas e o nível de cada um na aba Elenco.</li><li>Sorteie os times do dia (o app equilibra pelo nível) ou monte na mão.</li><li>Comece o jogo e toque no nome a cada gol.</li></ol>' +
     '<div class="col-btns"><button class="btn prim" data-a="aba" data-v="elenco">Cadastrar mensalistas</button><button class="btn" data-a="exemplo">Ver com dados de exemplo</button></div></div>';
 }
@@ -1005,7 +1035,7 @@ function vFutebas(){
   var todosDias = S.historico.concat(S.dia.jogos.length ? [S.dia] : []).filter(function(d){ return d.jogos.length; });
   var todosJogos = todosDias.reduce(function(a, d){ return a.concat(d.jogos); }, []);
   var gols = todosJogos.reduce(function(n, j){ return n + j.gols.length; }, 0);
-  var h = '<section class="card capa"><img class="escudo-g" src="/icones/escudo.png" alt="Escudo do Futebas" width="130" height="144"><h2>' + esc(S.grupo) + '</h2>' +
+  var h = '<section class="card capa"><img class="escudo-g" src="' + srcEscudo() + '" alt="Escudo do Futebas" width="130" height="144"><h2>' + esc(S.grupo) + '</h2>' +
     (s.criado ? '<p><b>Desde ' + esc(fmtDataCompleta(s.criado)) + '</b>' + (s.cidade ? ' · ' + esc(s.cidade) : '') + '</p>' : (s.cidade ? '<p>' + esc(s.cidade) + '</p>' : '')) +
     (tempo ? '<p class="mudo">' + esc(tempo) + ' de bola rolando</p>' : '') +
     (visitante() ? '' : '<button class="btn-link" style="align-self:center" data-a="editarGrupo">Editar data e cidade</button>') + '</section>';
@@ -1179,7 +1209,7 @@ function render(){
 }
 /* Tela de entrada: administrador (login) ou visitante (um toque) */
 function vEntrada(){
-  return '<div class="view" style="padding-top:24px"><div class="vazio" style="align-items:center;text-align:center"><img class="escudo-g" src="/icones/escudo.png" alt="Escudo do Futebas" width="130" height="144"><h2>Placar do Futebas</h2>' +
+  return '<div class="view" style="padding-top:8px"><div style="display:flex;justify-content:flex-end">' + htmlBtTema() + '</div><div class="vazio" style="align-items:center;text-align:center"><img class="escudo-g" src="' + srcEscudo() + '" alt="Escudo do Futebas" width="130" height="144"><h2>Placar do Futebas</h2>' +
     '<p class="mudo">Como você quer entrar?</p><div class="col-btns" style="width:100%">' +
     '<button class="btn prim grande" data-a="entrarVisitante">Entrar como visitante</button>' +
     '<p class="mudo">Para ver resumo, elenco, estatísticas e sortear times. Não precisa de senha e não muda nada.</p>' +
@@ -1521,6 +1551,7 @@ var A = {
   statPer: function(b){ statPer = b.dataset.v; render(); },
   statOrd: function(b){ statOrd = b.dataset.v; render(); },
   verEstat: function(b){ folhaEstat(b.dataset.p); },
+  tema: function(){ aplicarTema(!temaClaro()); render(); },
   /* entrada e visitante */
   entrarVisitante: function(){
     gravarModo('visitante'); S = lerVitrine(); aba = 'resumo';
@@ -1589,9 +1620,9 @@ function virarMensalistas(ids, avulso){
 }
 
 /* O que o visitante (e a tela de entrada) pode tocar. Qualquer outra ação é ignorada: o visitante só vê. */
-var LIVRES_VISITANTE = ['aba','fechar','statPer','statOrd','verEstat','verMensalistas','verUnif','filtroRank','mes','conta',
+var LIVRES_VISITANTE = ['tema','aba','fechar','statPer','statOrd','verEstat','verMensalistas','verUnif','filtroRank','mes','conta',
   'entrarAdmin','voltarInicio','sair','vsAtualizar','vsTodos','vsQtd','vsSortear','vsMudar','vsCopiar','vsTirarConv'];
-var LIVRES_ENTRADA = ['entrarVisitante','entrarAdmin','fechar'];
+var LIVRES_ENTRADA = ['tema','entrarVisitante','entrarAdmin','fechar'];
 document.addEventListener('click', function(e){
   var b = e.target.closest('[data-a]');
   if (!b || b.disabled) return;
