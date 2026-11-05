@@ -894,7 +894,7 @@ function vElenco(){
     '<form class="linha" data-f="addAv"><input type="text" id="novoAvulso" placeholder="Nome do avulso" autocomplete="off" enterkeyhint="done"><button class="btn prim">Adicionar</button></form>' +
     (av.length ? lista(av) : avT.length ? vazioFiltro : '') + '</section>';
   if (!demo) h += '<section class="card"><div class="rot">Conta</div>' + (usuario
-    ? '<p>Conectado como <b>' + esc(usuario.email || '') + '</b>.</p><p class="mudo">Os dados ficam guardados na internet e iguais nos celulares de quem marca os jogos.</p><button class="btn" data-a="conta">Ver sincronização</button>'
+    ? '<p>Conectado como <b>' + esc(usuario.email || '') + '</b>.</p><p class="mudo">Os dados ficam guardados na internet e iguais nos celulares de quem marca os jogos.</p><button class="btn" data-a="conta">Ver minha conta</button><button class="btn" data-a="verComoVisitante">Ver como visitante</button>'
     : '<p class="mudo">Entre com seu e-mail e senha para guardar os dados na internet e deixar tudo igual nos celulares de quem marca os jogos.</p><button class="btn prim" data-a="conta">Entrar</button>') + '</section>';
   if (!demo) h += '<section class="card"><div class="rot">Testar antes</div><p>Quer ver o app funcionando com jogadores de mentira? Nada do que fizer no exemplo fica salvo.</p><button class="btn" data-a="exemplo">Ver com dados de exemplo</button></section>';
   return h;
@@ -1528,6 +1528,12 @@ var A = {
     render(); window.scrollTo(0, 0); carregarVitrine();
   },
   entrarAdmin: function(){
+    if (usuario){ /* já está logado: volta a ser administrador sem senha */
+      closeSheet(); fecharCanalVitrine(); gravarModo('admin'); S = lerAdmin(); aba = 'jogo';
+      try{ localStorage.setItem(LS_ABA, aba); }catch(e){}
+      render(); window.scrollTo(0, 0); sincronizar(true); toast('Você voltou a ser administrador');
+      return;
+    }
     if (!sb){ carregarNuvem(); toast('Sem internet agora. Para entrar como administrador precisa de conexão.'); return; }
     openSheet('<h3>Entrar como administrador</h3><p class="mudo">Use o e-mail e a senha que o Leo cadastrou.</p>' +
       '<form class="col-btns" data-f="login"><input type="email" id="loginEmail" autocomplete="username" inputmode="email" placeholder="E-mail" required><input type="password" id="loginSenha" autocomplete="current-password" placeholder="Senha" required>' +
@@ -1584,7 +1590,7 @@ function virarMensalistas(ids, avulso){
 
 /* O que o visitante (e a tela de entrada) pode tocar. Qualquer outra ação é ignorada: o visitante só vê. */
 var LIVRES_VISITANTE = ['aba','fechar','statPer','statOrd','verEstat','verMensalistas','verUnif','filtroRank','mes','conta',
-  'entrarAdmin','voltarInicio','vsAtualizar','vsTodos','vsQtd','vsSortear','vsMudar','vsCopiar','vsTirarConv'];
+  'entrarAdmin','voltarInicio','sair','vsAtualizar','vsTodos','vsQtd','vsSortear','vsMudar','vsCopiar','vsTirarConv'];
 var LIVRES_ENTRADA = ['entrarVisitante','entrarAdmin','fechar'];
 document.addEventListener('click', function(e){
   var b = e.target.closest('[data-a]');
@@ -1707,7 +1713,7 @@ function iniciarNuvem(){
     var u = sessao ? sessao.user : null, trocou = (u && u.id) !== (usuario && usuario.id);
     usuario = u;
     /* Entrou com e-mail e senha: vira administrador (sai da vitrine e volta para os dados deste aparelho) */
-    if (u && modo !== 'admin'){ fecharCanalVitrine(); gravarModo('admin'); S = lerAdmin(); trocou = true; }
+    if (u && modo !== 'admin' && loginPedido){ loginPedido = false; fecharCanalVitrine(); gravarModo('admin'); S = lerAdmin(); trocou = true; }
     if (!u){ if (canal) sb.removeChannel(canal); canal = null; renderSeguro(); return; }
     /* setTimeout: a biblioteca pede para não chamar o banco dentro deste aviso */
     if (trocou){ renderSeguro(); setTimeout(function(){ sincronizar(true); }, 0); }
@@ -1736,6 +1742,7 @@ async function sincronizar(forcar){
   enviarVitrine();
 }
 function aplicarRemoto(dados){
+  if (visitante()) return;
   var st = normalizar(dados);
   if (demo) real = st; else S = st;
   try{ localStorage.setItem(LS, JSON.stringify(st)); }catch(e){}
@@ -1744,12 +1751,12 @@ function aplicarRemoto(dados){
   renderSeguro();
 }
 function agendarEnvio(){
-  if (!sb || !usuario || escolhaRemota) return;
+  if (visitante() || !sb || !usuario || escolhaRemota) return;
   pendente = true; gravarMarca(lerMarca().base || 0);
   clearTimeout(envioTimer); envioTimer = setTimeout(enviar, 700);
 }
 async function enviar(){
-  if (!sb || !usuario) return;
+  if (!sb || !usuario || visitante()) return;
   clearTimeout(envioTimer);
   var dados = dadosReais();
   nuvem = 'enviando'; atualizarSelo();
@@ -1820,8 +1827,10 @@ function perguntarQualUsar(remoto){
 A.usarNuvem = function(){ var st = escolhaRemota; escolhaRemota = null; closeSheet(); aplicarRemoto(st); ligarCanal(); toast('Pronto, usando os dados da internet'); };
 A.usarLocal = function(){ escolhaRemota = null; closeSheet(); salvar(); ligarCanal(); toast('Pronto, os dados deste aparelho vão para a internet'); };
 
+var loginPedido = false;
 function entrar(email, senha){
   var msg = $('#loginMsg');
+  loginPedido = true;
   if (!sb){ msg.textContent = 'Sem internet agora. Tente de novo quando conectar.'; return; }
   msg.textContent = 'Entrando…';
   sb.auth.signInWithPassword({email:email, password:senha}).then(function(r){
@@ -1832,8 +1841,9 @@ function entrar(email, senha){
 A.conta = function(){
   if (visitante()){
     openSheet('<h3>Você é visitante</h3><p class="mudo">Pode ver o resumo, o elenco e as estatísticas, e sortear times. Nada do que fizer aqui muda os dados do Futebas.</p>' +
-      '<button class="btn prim bloco" data-a="vsAtualizar">Atualizar os dados</button><button class="btn bloco" data-a="entrarAdmin">Entrar como administrador</button>' +
-      '<button class="btn bloco" data-a="voltarInicio">Voltar à tela de entrada</button><button class="btn bloco" data-a="fechar">Fechar</button>');
+      (usuario ? '<p class="mudo">Conectado como <b>' + esc(usuario.email || '') + '</b>: dá para voltar a ser administrador sem digitar a senha.</p>' : '') +
+      '<button class="btn prim bloco" data-a="vsAtualizar">Atualizar os dados</button><button class="btn bloco" data-a="entrarAdmin">' + (usuario ? 'Voltar a ser administrador' : 'Entrar como administrador') + '</button>' +
+      (usuario ? '<button class="btn bloco perigo" data-a="sair">Sair da conta</button>' : '<button class="btn bloco" data-a="voltarInicio">Voltar à tela de entrada</button>') + '<button class="btn bloco" data-a="fechar">Fechar</button>');
     return;
   }
   if (demo){ toast('No modo exemplo nada é salvo nem sincronizado.'); return; }
@@ -1845,10 +1855,22 @@ A.conta = function(){
     return;
   }
   var txt = nuvem === 'offline' ? 'Sem internet agora. As mudanças ficam neste aparelho e vão para a internet quando a conexão voltar.' : pendente ? 'Enviando as últimas mudanças…' : 'Tudo guardado na internet.';
-  openSheet('<h3>Sincronização</h3><p>Conectado como <b>' + esc(usuario.email || '') + '</b>.</p><p class="mudo">' + txt + '</p>' +
-    '<button class="btn prim bloco" data-a="sincAgora">Sincronizar agora</button><button class="btn bloco" data-a="sair">Sair desta conta</button><button class="btn bloco" data-a="fechar">Fechar</button>');
+  openSheet('<h3>Sua conta</h3><p>Conectado como <b>' + esc(usuario.email || '') + '</b> (administrador).</p><p class="mudo">' + txt + '</p>' +
+    '<button class="btn prim bloco" data-a="sincAgora">Sincronizar agora</button>' +
+    '<button class="btn bloco" data-a="verComoVisitante">Ver como visitante</button><p class="mudo">Mostra o app igual o pessoal vê. Para voltar, toque em "Visitante" lá em cima e em "Voltar a ser administrador".</p>' +
+    '<button class="btn bloco perigo" data-a="sair">Sair da conta</button><p class="mudo">Volta para a tela de entrada. Os dados continuam guardados na internet.</p><button class="btn bloco" data-a="fechar">Fechar</button>');
 };
 A.sincAgora = function(){ closeSheet(); sincronizar(true); };
+/* Administrador logado vê o app como visitante, sem sair da conta. Antes, manda o que estiver pendente. */
+A.verComoVisitante = async function(){
+  closeSheet();
+  if (pendente || envioTimer){ await enviar(); await enviarVitrine(); }
+  if (canal && sb) sb.removeChannel(canal); canal = null;
+  gravarModo('visitante'); S = lerVitrine(); aba = 'resumo';
+  try{ localStorage.setItem(LS_ABA, aba); }catch(e){}
+  vitrineEm = 0; render(); window.scrollTo(0, 0); carregarVitrine();
+  toast('Agora você vê o app como o pessoal vê');
+};
 A.sair = function(){ closeSheet(); sb.auth.signOut().then(function(){ gravarModo(null); render(); toast('Saiu da conta. Os dados continuam guardados neste aparelho.'); }); };
 
 window.addEventListener('online', function(){ if (!sb) carregarNuvem(); else sincronizar(true); });
