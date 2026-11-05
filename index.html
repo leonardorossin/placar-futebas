@@ -267,12 +267,9 @@ select{appearance:auto}
 .elenco-u .num{font:800 22px/1 var(--f-display);color:var(--accent);font-variant-numeric:tabular-nums;white-space:nowrap}
 .dest-bt{appearance:none;border:0;font:inherit;text-align:left;cursor:pointer;width:100%}
 .dest-bt:active{transform:scale(.98)}
-.dest-larga{grid-column:1/-1}
-.elenco-u .desde{font-size:12px;color:var(--muted);white-space:nowrap}
 .membros .quem{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0}
 .membros .sub{font-size:13px;color:var(--muted)}
 .membros .g{font-size:17px;white-space:nowrap}
-.membros .tag{margin-left:4px}
 .per-linha{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .per-linha label{display:flex;flex-direction:column;gap:4px;min-width:0}
 .per-linha input{min-width:0;width:100%}
@@ -401,7 +398,7 @@ function sobrePadrao(){
   return {criado:'2024-04-08', cidade:'Piracicaba (SP)', uniformes:[
     {id:'u1', num:1, temporada:2025, quando:'2025-05', situacao:'pronto', obs:'', pessoas:pessoas},
     {id:'u2', num:2, temporada:2026, quando:'', situacao:'decisao', obs:'', pessoas:[]}
-  ], membros:[]};
+  ], membros:[], correcoes:[]};
 }
 function ajustarSobre(st){
   var s = st.sobre;
@@ -424,12 +421,32 @@ function ajustarSobre(st){
     if (typeof m.nome !== 'string') m.nome = '';
     if (typeof m.wa !== 'string') m.wa = '';
     if (typeof m.jog !== 'string') m.jog = '';
-    m.mao = m.mao === true;
     m.per = (Array.isArray(m.per) ? m.per : []).filter(function(p){ return p && DATA.test(p.de); })
       .map(function(p){ return {de:p.de, ate:DATA.test(p.ate) && p.ate >= p.de ? p.ate : ''}; })
       .sort(function(a, b){ return a.de < b.de ? -1 : a.de > b.de ? 1 : 0; });
   });
   s.membros = s.membros.filter(function(m){ return m.per.length; });
+  if (!Array.isArray(s.correcoes)) s.correcoes = [];
+  corrigirMembros(s, st);
+}
+/* Correções pedidas pelo Leo em 05/11/2026 na lista importada (nomes e quem sai). Roda uma vez (marca em s.correcoes).
+   Não mexe no atualizadoEm aqui: só depois de sincronizar, em cima dos dados mais novos, o administrador salva e manda. */
+var CORRECAO_MEMBROS_1 = {
+  m9vqocv9b:{nome:'Guilherme Muricy'}, m9biwd2nx:{nome:'Du', jog:'jefthq9ci'}, mhlac8oaw:{nome:'André'}, mfkwa8fp3:{nome:'Thiago'},
+  mg7nn48yz:{nome:'Vinicius Lima'}, mc0q0c5sp:{nome:'Arthur'}, mbcy2zflu:{nome:'Caio P.'},
+  mv3r0jzpa:null, miywn935i:null, mgiium70p:null, miuh0mutd:null, mtostmd1e:null
+};
+var corrigiuAgora = false;
+function corrigirMembros(s, st){
+  if (s.correcoes.indexOf('membros-1') >= 0 || !s.membros.some(function(m){ return CORRECAO_MEMBROS_1[m.id] !== undefined; })) return;
+  s.membros = s.membros.filter(function(m){
+    var c = CORRECAO_MEMBROS_1[m.id];
+    if (c === null) return false;
+    if (c){ m.nome = c.nome; if (c.jog && !s.membros.some(function(o){ return o.jog === c.jog; })) m.jog = c.jog; }
+    return true;
+  });
+  s.correcoes.push('membros-1');
+  corrigiuAgora = true;
 }
 function normalizar(st){
   if (!st || typeof st !== 'object') return estadoVazio();
@@ -449,8 +466,8 @@ function normalizar(st){
     if (/^Time [A-D]$/.test(t.nome)) t.nome = nomePadrao(t.nome.slice(-1)); /* nome antigo: Time A → Time 1 */
   });
   st.dia = d;
-  ajustarSobre(st);
   st.atualizadoEm = +st.atualizadoEm || 0;
+  ajustarSobre(st);
   return st;
 }
 
@@ -1099,11 +1116,8 @@ function vFutebas(){
     (tempo ? '<p class="mudo">' + esc(tempo) + ' de bola rolando</p>' : '') +
     (visitante() ? '' : '<button class="btn-link" style="align-self:center" data-a="editarGrupo">Editar data e cidade</button>') + '</section>';
   h += '<div class="destaques">' +
-    '<button class="dest dest-bt" data-a="verMensalistas"><span class="rot">Mensalistas</span><span class="v">' + mensalistas().length + '</span><span class="s">Ver a lista ›</span></button>' +
+    '<button class="dest dest-bt" data-a="verMembros"><span class="rot">Membros</span><span class="v">' + s.membros.filter(membroAtivo).length + '</span><span class="s">Ver a lista ›</span></button>' +
     '<div class="dest"><span class="rot">No app</span><span class="v">' + pl(todosDias.length, 'dia', 'dias') + '</span><span class="s">' + pl(todosJogos.length, 'jogo', 'jogos') + ' · ' + pl(gols, 'gol', 'gols') + '</span></div>';
-  var nAtivos = s.membros.filter(membroAtivo).length;
-  if (s.membros.length) h += '<button class="dest dest-bt dest-larga" data-a="verMembros"><span class="rot">Membros do grupo</span><span class="v">' + nAtivos + ' ativos</span><span class="s">' + pl(s.membros.length, 'pessoa já passou', 'pessoas já passaram') + ' · Ver o histórico ›</span></button>';
-  else if (!visitante()) h += '<button class="dest dest-bt dest-larga" data-a="importarZap"><span class="rot">Membros do grupo</span><span class="s">Importar do WhatsApp ›</span></button>';
   h += '</div>';
   var us = s.uniformes.slice().sort(function(a, b){ return b.temporada - a.temporada || b.num - a.num; });
   h += '<section class="bloco-f"><div class="rot">Uniformes</div>' + us.map(vUniforme).join('') +
@@ -1259,8 +1273,9 @@ function unifPor(id){ return S.sobre.uniformes.filter(function(u){ return u.id =
 
 /* ---------- membros do grupo do WhatsApp ----------
    Quem já entrou e saiu do grupo, com o tempo somando todas as vezes em que a pessoa esteve lá.
-   Vem do arquivo "Exportar conversa" do WhatsApp (lido aqui no celular, não vai para lugar nenhum)
-   e o administrador corrige na mão. m.jog liga o membro a um jogador do Elenco. */
+   A lista começou com o histórico do grupo do WhatsApp (importado uma vez em 05/11/2026). Daqui para frente
+   segue o Elenco: mensalista novo entra, mensalista que vira avulso (ou sai do Elenco) vira ex-membro e
+   avulso que vira mensalista volta (acompanharMembro). m.jog liga o membro a um jogador do Elenco. */
 var FILTROS_MEMBROS = {ativos:'Ativos', ex:'Ex-membros', todos:'Todos'}, memFiltro = 'ativos';
 var MESES_CURTOS = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 function diasEntre(a, b){ var x = a.split('-').map(Number), y = b.split('-').map(Number); return Math.round((Date.UTC(y[0], y[1] - 1, y[2]) - Date.UTC(x[0], x[1] - 1, x[2])) / 864e5); }
@@ -1276,12 +1291,19 @@ function tempoMembro(dias, curto){
 function nomeMembro(m){ var p = m.jog && pessoa(m.jog); return p ? p.nome : m.nome; }
 function nomeMembroHtml(m){ var p = m.jog && pessoa(m.jog); return p ? nomeHtml(p.id, p.nome) : esc(m.nome); }
 function periodoMembro(m){ return membroAtivo(m) ? 'desde ' + mesAno(m.per[0].de) : mesAno(m.per[0].de) + ' a ' + mesAno(m.per[m.per.length - 1].ate); }
-function seloMembro(m, dias){
-  if (S.sobre.criado && m.per[0].de <= S.sobre.criado) return 'Fundador';
-  if (dias >= 730) return 'Veterano';
-  return membroAtivo(m) && dias < 183 ? 'Novato' : '';
-}
 function membroDoJog(pid){ return S.sobre.membros.filter(function(m){ return m.jog === pid; })[0]; }
+/* Chamar depois de criar um jogador, trocar mensalista/avulso ou tirar do Elenco (fora = true).
+   Mensalista = membro ativo. Na mesma data, ir e voltar não cria um período novo. */
+function acompanharMembro(p, fora){
+  var m = membroDoJog(p.id), hoje = hojeISO(), u = m && m.per[m.per.length - 1];
+  if (fora || p.avulso){
+    if (m && membroAtivo(m)) u.ate = hoje;
+    if (m && fora){ m.nome = p.nome; m.jog = ''; } /* jogador saiu do Elenco: o membro fica com o nome */
+    return;
+  }
+  if (!m) S.sobre.membros.push({id:'m' + uid8(), nome:p.nome, wa:'', jog:p.id, per:[{de:hoje, ate:''}]});
+  else if (!membroAtivo(m)){ if (u.ate === hoje) u.ate = ''; else m.per.push({de:hoje, ate:''}); }
+}
 function membroPor(id){ return S.sobre.membros.filter(function(m){ return m.id === id; })[0]; }
 function folhaMembros(){
   var adm = !visitante();
@@ -1293,12 +1315,11 @@ function folhaMembros(){
     return '<button class="chip" data-a="membrosFiltro" data-v="' + k + '" aria-pressed="' + (k === memFiltro) + '">' + FILTROS_MEMBROS[k] + ' <b>' + cont[k] + '</b></button>';
   }).join('') + '</div>';
   h += lista.length ? '<ol class="rank membros">' + lista.map(function(x, i){
-    var selo = seloMembro(x.m, x.d), voltas = x.m.per.length - 1;
-    var miolo = '<span class="pos">' + (i + 1) + 'º</span><span class="quem"><span class="nm">' + nomeMembroHtml(x.m) + (selo ? ' <span class="tag">' + selo + '</span>' : '') + '</span>' +
-      '<span class="sub">' + periodoMembro(x.m) + (voltas ? ' · voltou ' + pl(voltas, 'vez', 'vezes') : '') + '</span></span><span class="g">' + esc(tempoMembro(x.d, true)) + '</span>';
+    var miolo = '<span class="pos">' + (i + 1) + 'º</span><span class="quem"><span class="nm">' + nomeMembroHtml(x.m) + '</span>' +
+      '<span class="sub">' + periodoMembro(x.m) + '</span></span><span class="g">' + esc(tempoMembro(x.d, true)) + '</span>';
     return adm ? '<li class="cl"><button class="linha-bt" data-a="editarMembro" data-m="' + esc(x.m.id) + '">' + miolo + '</button></li>' : '<li>' + miolo + '</li>';
   }).join('') + '</ol>' : '<p class="mudo">Ninguém aqui.</p>';
-  if (adm) h += '<button class="btn bloco" data-a="novoMembro">' + ICON.mao + 'Adicionar membro</button><button class="btn bloco" data-a="importarZap">Importar do WhatsApp</button>';
+  if (adm) h += '<button class="btn bloco" data-a="novoMembro">' + ICON.mao + 'Adicionar membro</button>';
   openSheet(h + '<button class="btn bloco" data-a="fechar">Fechar</button>');
 }
 function linhaPeriodo(p){
@@ -1320,118 +1341,6 @@ function folhaMembro(m){
     '<button class="btn prim bloco">Salvar</button></form>' +
     (novo ? '' : '<button class="btn perigo bloco" data-a="apagarMembro" data-m="' + esc(m.id) + '">Apagar membro</button>') +
     '<button class="btn bloco" data-a="verMembros">Voltar</button>');
-}
-/* Liga membros a jogadores do Elenco quando todas as palavras do nome do jogador aparecem no nome do WhatsApp
-   ("Marin" → "Guilherme Marin"). Com mais de um candidato, fica quem ainda está no grupo e há mais tempo. */
-function ligarMembrosElenco(){
-  var usados = {};
-  S.sobre.membros.forEach(function(m){ if (m.jog) usados[m.jog] = 1; });
-  S.jogadores.filter(function(p){ return !usados[p.id]; }).map(function(p){
-    var ws = norm(p.nome).split(' ').filter(Boolean);
-    return {p:p, c:S.sobre.membros.filter(function(m){
-      var mw = norm(m.wa || m.nome).split(' ');
-      return !m.jog && ws.length && ws.every(function(w){ return mw.indexOf(w) >= 0; });
-    })};
-  }).filter(function(x){ return x.c.length; }).sort(function(a, b){ return a.c.length - b.c.length; }).forEach(function(x){
-    var c = x.c.filter(function(m){ return !m.jog; }).sort(function(a, b){ return (membroAtivo(b) - membroAtivo(a)) || (diasMembro(b) - diasMembro(a)); })[0];
-    if (c) c.jog = x.p.id;
-  });
-}
-/* Arquivo do "Exportar conversa": .zip (abre aqui mesmo, sem biblioteca) ou o .txt */
-async function textoDoArquivo(arq){
-  var buf = new Uint8Array(await arq.arrayBuffer());
-  if (buf[0] !== 0x50 || buf[1] !== 0x4b) return new TextDecoder('utf-8').decode(buf);
-  var dv = new DataView(buf.buffer), i = buf.length - 22;
-  while (i >= 0 && dv.getUint32(i, true) !== 0x06054b50) i--;
-  if (i < 0) throw new Error('zip');
-  var n = dv.getUint16(i + 10, true), p = dv.getUint32(i + 16, true), achou = null;
-  for (var k = 0; k < n && dv.getUint32(p, true) === 0x02014b50; k++){
-    var nl = dv.getUint16(p + 28, true), nome = new TextDecoder().decode(buf.subarray(p + 46, p + 46 + nl));
-    if (/\.txt$/i.test(nome) && (!achou || /chat|conversa/i.test(nome))) achou = {met:dv.getUint16(p + 10, true), tam:dv.getUint32(p + 20, true), pos:dv.getUint32(p + 42, true)};
-    p += 46 + nl + dv.getUint16(p + 30, true) + dv.getUint16(p + 32, true);
-  }
-  if (!achou) throw new Error('sem-txt');
-  var ini = achou.pos + 30 + dv.getUint16(achou.pos + 26, true) + dv.getUint16(achou.pos + 28, true), dados = buf.subarray(ini, ini + achou.tam);
-  if (achou.met === 0) return new TextDecoder('utf-8').decode(dados);
-  if (achou.met !== 8 || typeof DecompressionStream === 'undefined') throw new Error('zip');
-  return await new Response(new Blob([dados]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text();
-}
-function limparNomeZap(s){
-  return String(s || '').replace(/[‎‏‪-‮]/g, '').replace(/[‐‑]/g, '-').replace(/[  ]/g, ' ')
-    .replace(/\s+/g, ' ').trim().replace(/^~\s*/, '').trim();
-}
-function ehTelefone(s){ return /^\+?[\d\s()-]{8,}$/.test(s); }
-/* Lê as mensagens automáticas do WhatsApp (iPhone e Android): criou o grupo, adicionou, entrou, saiu, removeu.
-   Quem só aparece mandando mensagem conta a partir da 1ª mensagem. Devolve [{wa, per:[{de, ate}]}]. */
-function lerConversaZap(txt){
-  var grupo = '', inicio = '', ev = [];
-  String(txt).split(/\r?\n/).forEach(function(l, i){
-    var m = l.match(/^‎?\[(\d{1,2})\/(\d{1,2})\/(\d{2,4}),? [\d:]+(?:\s?[AP]M)?\] ([^:]+): (‎?)(.*)$/), quem = '', tx, sis;
-    if (m){ quem = limparNomeZap(m[4]); sis = !!m[5]; tx = m[6]; if (i === 0 && sis) grupo = quem; }
-    else {
-      m = l.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4}),? [\d:]+(?:\s?[AP]M)? - (.*)$/);
-      if (!m) return;
-      var r = m[4].match(/^([^:]{1,60}): (.*)$/);
-      if (r && !/ (criou|adicionou|removeu|saiu|entrou)\b/.test(r[1])){ quem = limparNomeZap(r[1]); tx = r[2]; sis = false; }
-      else { tx = m[4]; sis = true; }
-    }
-    var ano = m[3].length === 2 ? '20' + m[3] : m[3], d = ano + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0');
-    if (!inicio) inicio = d;
-    if (!sis){ if (quem) ev.push({d:d, t:'msg', n:quem}); return; }
-    var x = limparNomeZap(tx), q;
-    function por(t, nomes){ nomes.forEach(function(n){ ev.push({d:d, t:t, n:limparNomeZap(n)}); }); }
-    if ((q = x.match(/^(.+?) criou (o )?grupo/))) por('entra', [q[1]]);
-    else if ((q = x.match(/^(.+?) adicionou (.+)$/))) por('entra', q[2].split(/, | e /));
-    else if ((q = x.match(/^(.+?) entrou( usando| no grupo|$)/))) por('entra', [q[1]]);
-    else if ((q = x.match(/^(.+?) removeu (.+)$/))) por('sai', [q[2]]);
-    else if ((q = x.match(/^(.+?) saiu$/))) por('sai', [q[1]]);
-  });
-  /* Contato renomeado no meio do caminho ("Tonny Pinheiro" entrou, "Tonny" saiu): um nome que nunca foi
-     adicionado e aparece pela 1ª vez é a mesma pessoa que um ativo cujo nome começa igual (só se for um só) */
-  var pes = {}, ordem = [], adicionados = {}, apelido = {};
-  ev.forEach(function(e){ if (e.t === 'entra') adicionados[e.n] = 1; });
-  ev.forEach(function(e){
-    var n = apelido[e.n] || e.n;
-    if (!n || n === grupo || /^(você|meta ai)$/i.test(n) || /^mais \d+ pessoas?$/i.test(n)) return;
-    if (!pes[n] && !adicionados[n]){
-      var iguais = ordem.filter(function(k){
-        var p = pes[k], a = norm(k), b = norm(n);
-        return p.per.length && !p.per[p.per.length - 1].ate && a !== b && (a.indexOf(b + ' ') === 0 || b.indexOf(a + ' ') === 0);
-      });
-      if (iguais.length === 1){ apelido[n] = n = iguais[0]; }
-    }
-    if (!pes[n]){ pes[n] = {wa:n, per:[]}; ordem.push(n); }
-    var p = pes[n], u = p.per[p.per.length - 1], aberto = u && !u.ate;
-    if (e.t === 'entra' || (e.t === 'msg' && !p.per.length)){ if (!aberto) p.per.push({de:e.d, ate:''}); }
-    else if (e.t === 'sai'){ if (aberto) u.ate = e.d; else if (!p.per.length) p.per.push({de:inicio, ate:e.d}); }
-  });
-  var lista = ordem.map(function(n){ return pes[n]; }).filter(function(p){ return p.per.length; });
-  lista.inicio = inicio;
-  return lista;
-}
-/* Arquivo que começa depois (celular com menos histórico): o que já se sabia de antes do começo dele fica */
-function juntarPeriodos(velhos, novos, inicio){
-  if (!inicio || !velhos.length || velhos[0].de >= inicio) return novos;
-  var antes = velhos.filter(function(p){ return p.de < inicio; }).map(function(p){ return {de:p.de, ate:p.ate}; }), u = antes[antes.length - 1];
-  novos = novos.slice();
-  if (u && (!u.ate || u.ate >= inicio) && novos.length){ u.ate = novos[0].ate; novos.shift(); }
-  return antes.concat(novos);
-}
-/* Junta com a lista que já existe pelo nome do WhatsApp: o que o administrador corrigiu (nome, jogador) fica. */
-async function importarZap(arq){
-  var lidos;
-  try{ lidos = lerConversaZap(await textoDoArquivo(arq)); }catch(e){ toast('Não consegui abrir esse arquivo.'); return; }
-  if (!lidos.length){ toast('Não achei ninguém entrando ou saindo nesse arquivo.'); return; }
-  var novos = 0;
-  lidos.forEach(function(x){
-    var m = S.sobre.membros.filter(function(o){ return o.wa === x.wa; })[0];
-    if (m){ if (!m.mao) m.per = juntarPeriodos(m.per, x.per, lidos.inicio); return; } /* datas corrigidas à mão (m.mao) ficam */
-    novos++;
-    S.sobre.membros.push({id:'m' + uid8(), nome:ehTelefone(x.wa) || !/[a-z0-9]/.test(norm(x.wa)) ? 'Sem nome' : x.wa.slice(0, 40), wa:x.wa, jog:'', per:x.per});
-  });
-  ligarMembrosElenco();
-  commit(); folhaMembros();
-  toast(pl(lidos.length, 'pessoa', 'pessoas') + ' no arquivo' + (novos ? ' · ' + pl(novos, 'nova', 'novas') : ''));
 }
 
 /* Abas de cada modo: o visitante não vê Jogo nem Times e tem a aba Sortear (sorteio que não salva nada) */
@@ -1760,9 +1669,9 @@ var A = {
     linhas.forEach(function(l){
       if (!l.nome) return;
       var p = S.jogadores.filter(function(x){ return norm(x.nome) === norm(l.nome); })[0];
-      if (!p){ S.jogadores.push({id:'j' + uid8(), nome:l.nome, nivel:l.nivel || 2, avulso:l.avulso}); add++; return; }
+      if (!p){ p = {id:'j' + uid8(), nome:l.nome, nivel:l.nivel || 2, avulso:l.avulso}; S.jogadores.push(p); acompanharMembro(p); add++; return; }
       if (l.nivel && p.nivel !== l.nivel){ p.nivel = l.nivel; niv++; }
-      if (l.avulso) p.avulso = true;
+      if (l.avulso && !p.avulso){ p.avulso = true; acompanharMembro(p); }
     });
     var msg = [add ? pl(add, 'nome adicionado', 'nomes adicionados') : '', niv ? pl(niv, 'nível atualizado', 'níveis atualizados') : ''].filter(Boolean).join(' · ');
     closeSheet(); commit(); toast(msg || 'Esses nomes já estavam no elenco');
@@ -1776,14 +1685,15 @@ var A = {
   },
   trocarTipo: function(b){
     var p = pessoa(b.dataset.p); if (!p) return;
-    p.avulso = !p.avulso; closeSheet(); commit(); toast(p.nome + (p.avulso ? ' agora é avulso' : ' agora é mensalista'));
+    p.avulso = !p.avulso; acompanharMembro(p); closeSheet(); commit(); toast(p.nome + (p.avulso ? ' agora é avulso' : ' agora é mensalista'));
   },
   removerJog: function(b){
     var p = pessoa(b.dataset.p); if (!p) return;
     confirmar('Remover ' + p.nome + '?', 'Sai do elenco e dos times de hoje. Os gols já marcados continuam no histórico.', 'confRemover', 'Remover do elenco', ' data-p="' + esc(p.id) + '"');
   },
   confRemover: function(b){
-    var pid = b.dataset.p;
+    var pid = b.dataset.p, pr = pessoa(pid);
+    if (pr) acompanharMembro(pr, true);
     S.jogadores = S.jogadores.filter(function(p){ return p.id !== pid; });
     S.dia.times.forEach(function(t){ t.jogadores = t.jogadores.filter(function(x){ return x !== pid; }); });
     closeSheet(); commit();
@@ -1818,10 +1728,6 @@ var A = {
   vsSortear: function(){ sortearVisitante(); },
   vsMudar: function(){ vsRes = null; render(); window.scrollTo(0, 0); },
   vsCopiar: function(){ copiar(txtTimesVS()); },
-  verMensalistas: function(){
-    var ms = ordenar(mensalistas());
-    openSheet('<h3>Mensalistas (' + ms.length + ')</h3>' + (ms.length ? '<ul class="elenco-u">' + ms.map(function(p){ var mb = membroDoJog(p.id); return '<li><span class="nm">' + esc(p.nome) + '</span>' + (mb ? '<span class="desde">' + mesAno(mb.per[0].de) + '</span>' : '') + '</li>'; }).join('') + '</ul>' : '<p class="mudo">Nenhum mensalista cadastrado ainda.</p>') + '<button class="btn bloco" data-a="fechar">Fechar</button>');
-  },
   editarGrupo: function(){
     openSheet('<h3>Sobre o ' + esc(S.grupo) + '</h3><form class="col-btns" data-f="grupo">' +
       '<label class="rot" for="gCriado">Data em que o grupo foi criado</label><input type="date" id="gCriado" value="' + esc(S.sobre.criado) + '">' +
@@ -1860,11 +1766,6 @@ var A = {
   confApagarMembro: function(b){
     S.sobre.membros = S.sobre.membros.filter(function(m){ return m.id !== b.dataset.m; });
     commit(); folhaMembros(); toast('Membro apagado');
-  },
-  importarZap: function(){
-    openSheet('<h3>Importar do WhatsApp</h3><p class="mudo">No grupo: Exportar conversa, Sem mídia.</p>' +
-      '<label class="btn prim bloco" for="zapArq">Escolher o arquivo</label><input type="file" id="zapArq" accept=".zip,.txt,application/zip,text/plain" hidden>' +
-      '<button class="btn bloco" data-a="verMembros">Voltar</button>');
   }
 };
 /* Convidado do dia passa para o elenco, como mensalista ou avulso */
@@ -1874,12 +1775,12 @@ function virarMensalistas(ids, avulso){
     if (!p) return;
     S.dia.avulsos = S.dia.avulsos.filter(function(x){ return x.id !== id; });
     p.avulso = !!avulso;
-    if (!S.jogadores.some(function(x){ return norm(x.nome) === norm(p.nome); })) S.jogadores.push(p);
+    if (!S.jogadores.some(function(x){ return norm(x.nome) === norm(p.nome); })){ S.jogadores.push(p); acompanharMembro(p); }
   });
 }
 
 /* O que o visitante (e a tela de entrada) pode tocar. Qualquer outra ação é ignorada: o visitante só vê. */
-var LIVRES_VISITANTE = ['tema','aba','fechar','statPer','statOrd','verEstat','verMensalistas','verUnif','filtroRank','mes','conta','verMembros','membrosFiltro',
+var LIVRES_VISITANTE = ['tema','aba','fechar','statPer','statOrd','verEstat','verUnif','filtroRank','mes','conta','verMembros','membrosFiltro',
   'entrarAdmin','voltarInicio','sair','vsAtualizar','vsTodos','vsQtd','vsSortear','vsMudar','vsCopiar'];
 var LIVRES_ENTRADA = ['tema','entrarVisitante','entrarAdmin','fechar'];
 document.addEventListener('click', function(e){
@@ -1902,7 +1803,7 @@ document.addEventListener('submit', function(e){
     if (!nm) return;
     var ja = S.jogadores.filter(function(p){ return norm(p.nome) === norm(nm); })[0];
     if (ja){ toast(nm + ' já está no elenco como ' + (ja.avulso ? 'avulso' : 'mensalista')); return; }
-    S.jogadores.push({id:'j' + uid8(), nome:nm, nivel:2, avulso:av}); commit();
+    var np = {id:'j' + uid8(), nome:nm, nivel:2, avulso:av}; S.jogadores.push(np); acompanharMembro(np); commit();
     var ni = $(campo); if (ni) ni.focus();
   } else if (f.dataset.f === 'conv'){
     var c = $('#convNome'), cn = limparNome(c.value);
@@ -1939,7 +1840,6 @@ document.addEventListener('submit', function(e){
     if (!pers.length){ toast('Coloque quando entrou'); return; }
     var mm = membroPor(f.dataset.m);
     if (!mm){ mm = {id:'m' + uid8(), nome:'', wa:'', jog:'', per:[]}; S.sobre.membros.push(mm); }
-    if (JSON.stringify(mm.per) !== JSON.stringify(pers.slice().sort(function(x, y){ return x.de < y.de ? -1 : 1; }).map(function(p){ return {de:p.de, ate:p.ate >= p.de ? p.ate : ''}; }))) mm.mao = true;
     mm.nome = mn || (pessoa(mj) || {}).nome || ''; mm.jog = mj; mm.per = pers;
     ajustarSobre(S); commit(); folhaMembros(); toast('Salvo');
   }
@@ -1948,7 +1848,6 @@ document.addEventListener('change', function(e){
   var t = e.target;
   if (t.hasAttribute && t.hasAttribute('data-vs')){ vsMarc[t.value] = t.checked; atualizarVsInfo(); return; }
   if (!modo || visitante()) return;
-  if (t.id === 'zapArq'){ if (t.files && t.files[0]) importarZap(t.files[0]); return; }
   if (t.id === 'grupoNome'){ S.grupo = t.value.trim().slice(0, 30) || 'Futebas'; commit(); }
   else if (t.classList && t.classList.contains('tnome')){ var tm = timePor(t.dataset.t); if (tm){ tm.nome = t.value.trim().slice(0, 20) || nomePadrao(tm.id); salvar(); } }
   else if (t.id === 'selCasa' || t.id === 'selFora'){ S.dia.proximo = {casa:$('#selCasa').value, fora:$('#selFora').value}; salvar(); }
@@ -2046,16 +1945,19 @@ async function sincronizar(forcar){
   else if ((local.atualizadoEm || 0) > remT) await enviar();
   else { pendente = false; gravarMarca(remT); nuvem = 'ok'; atualizarSelo(); }
   ligarCanal();
+  if (corrigiuAgora && !demo){ corrigiuAgora = false; salvar(); } /* correção de agora vai para a internet */
   enviarVitrine();
 }
 function aplicarRemoto(dados){
   if (visitante()) return;
-  var st = normalizar(dados);
+  corrigiuAgora = false;
+  var st = normalizar(dados), corrigiu = corrigiuAgora;
   if (demo) real = st; else S = st;
   try{ localStorage.setItem(LS, JSON.stringify(st)); }catch(e){}
   pendente = false; gravarMarca(st.atualizadoEm); nuvem = 'ok';
   if (!jogoAtual()) soltarTela();
   renderSeguro();
+  if (corrigiu && !demo) salvar(); /* veio da internet sem a correção: corrige em cima dela e manda de volta */
 }
 function agendarEnvio(){
   if (visitante() || !sb || !usuario || escolhaRemota) return;
