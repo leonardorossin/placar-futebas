@@ -429,24 +429,30 @@ function ajustarSobre(st){
   if (!Array.isArray(s.correcoes)) s.correcoes = [];
   corrigirMembros(s, st);
 }
-/* Correções pedidas pelo Leo em 05/11/2026 na lista importada (nomes e quem sai). Roda uma vez (marca em s.correcoes).
+/* Correções pedidas pelo Leo em 05/11/2026 na lista importada (nomes e quem sai; null = tira). Cada uma roda uma vez (marca em s.correcoes).
    Não mexe no atualizadoEm aqui: só depois de sincronizar, em cima dos dados mais novos, o administrador salva e manda. */
-var CORRECAO_MEMBROS_1 = {
-  m9vqocv9b:{nome:'Guilherme Muricy'}, m9biwd2nx:{nome:'Du', jog:'jefthq9ci'}, mhlac8oaw:{nome:'André'}, mfkwa8fp3:{nome:'Thiago'},
-  mg7nn48yz:{nome:'Vinicius Lima'}, mc0q0c5sp:{nome:'Arthur'}, mbcy2zflu:{nome:'Caio P.'},
-  mv3r0jzpa:null, miywn935i:null, mgiium70p:null, miuh0mutd:null, mtostmd1e:null
+var CORRECOES_MEMBROS = {
+  'membros-1':{
+    m9vqocv9b:{nome:'Guilherme Muricy'}, m9biwd2nx:{nome:'Du', jog:'jefthq9ci'}, mhlac8oaw:{nome:'André'}, mfkwa8fp3:{nome:'Thiago'},
+    mg7nn48yz:{nome:'Vinicius Lima'}, mc0q0c5sp:{nome:'Arthur'}, mbcy2zflu:{nome:'Caio P.'},
+    mv3r0jzpa:null, miywn935i:null, mgiium70p:null, miuh0mutd:null, mtostmd1e:null
+  },
+  'membros-2':{ m6ly0aqe3:null, mmms7r0qn:null }
 };
 var corrigiuAgora = false;
 function corrigirMembros(s, st){
-  if (s.correcoes.indexOf('membros-1') >= 0 || !s.membros.some(function(m){ return CORRECAO_MEMBROS_1[m.id] !== undefined; })) return;
-  s.membros = s.membros.filter(function(m){
-    var c = CORRECAO_MEMBROS_1[m.id];
-    if (c === null) return false;
-    if (c){ m.nome = c.nome; if (c.jog && !s.membros.some(function(o){ return o.jog === c.jog; })) m.jog = c.jog; }
-    return true;
+  Object.keys(CORRECOES_MEMBROS).forEach(function(chave){
+    var cor = CORRECOES_MEMBROS[chave];
+    if (s.correcoes.indexOf(chave) >= 0 || !s.membros.some(function(m){ return cor[m.id] !== undefined; })) return;
+    s.membros = s.membros.filter(function(m){
+      var c = cor[m.id];
+      if (c === null) return false;
+      if (c){ m.nome = c.nome; if (c.jog && !s.membros.some(function(o){ return o.jog === c.jog; })) m.jog = c.jog; }
+      return true;
+    });
+    s.correcoes.push(chave);
+    corrigiuAgora = true;
   });
-  s.correcoes.push('membros-1');
-  corrigiuAgora = true;
 }
 function normalizar(st){
   if (!st || typeof st !== 'object') return estadoVazio();
@@ -1116,7 +1122,7 @@ function vFutebas(){
     (tempo ? '<p class="mudo">' + esc(tempo) + ' de bola rolando</p>' : '') +
     (visitante() ? '' : '<button class="btn-link" style="align-self:center" data-a="editarGrupo">Editar data e cidade</button>') + '</section>';
   h += '<div class="destaques">' +
-    '<button class="dest dest-bt" data-a="verMembros"><span class="rot">Membros</span><span class="v">' + s.membros.filter(membroAtivo).length + '</span><span class="s">Ver a lista ›</span></button>' +
+    '<button class="dest dest-bt" data-a="verMembros"><span class="rot">Jogadores</span><span class="v">' + s.membros.filter(membroAtivo).length + '</span><span class="s">Ver a lista ›</span></button>' +
     '<div class="dest"><span class="rot">No app</span><span class="v">' + pl(todosDias.length, 'dia', 'dias') + '</span><span class="s">' + pl(todosJogos.length, 'jogo', 'jogos') + ' · ' + pl(gols, 'gol', 'gols') + '</span></div>';
   h += '</div>';
   var us = s.uniformes.slice().sort(function(a, b){ return b.temporada - a.temporada || b.num - a.num; });
@@ -1239,7 +1245,7 @@ function folhaEstat(pid){
   if (!e){ closeSheet(); return; }
   function box(rot, v, s){ return '<div class="dest"><span class="rot">' + rot + '</span><span class="v">' + v + '</span>' + (s ? '<span class="s">' + s + '</span>' : '') + '</div>'; }
   var mb = membroDoJog(e.id);
-  openSheet('<h3>' + nomeHtml(e.id, e.nome) + '</h3>' + (mb ? '<p>Membro ' + periodoMembro(mb) + ' · ' + tempoMembro(diasMembro(mb)) + '</p>' : '') + '<p class="mudo">' + esc(PERIODOS[statPer]) + '</p><div class="destaques">' +
+  openSheet('<h3>' + nomeHtml(e.id, e.nome) + '</h3>' + (mb ? '<p>Jogador ' + periodoMembro(mb) + ' · ' + tempoMembro(diasMembro(mb)) + '</p>' : '') + '<p class="mudo">' + esc(PERIODOS[statPer]) + '</p><div class="destaques">' +
     box('Aproveitamento', e.aprov + '%', e.V + 'V ' + e.E + 'E ' + e.D + 'D') +
     box('Jogos', e.J, pl(e.noites, 'noite', 'noites')) +
     box('Gols', e.gols, e.J ? num1(e.gols / e.J) + ' por jogo' : '') +
@@ -1276,7 +1282,7 @@ function unifPor(id){ return S.sobre.uniformes.filter(function(u){ return u.id =
    A lista começou com o histórico do grupo do WhatsApp (importado uma vez em 05/11/2026). Daqui para frente
    segue o Elenco: mensalista novo entra, mensalista que vira avulso (ou sai do Elenco) vira ex-membro e
    avulso que vira mensalista volta (acompanharMembro). m.jog liga o membro a um jogador do Elenco. */
-var FILTROS_MEMBROS = {ativos:'Ativos', ex:'Ex-membros', todos:'Todos'}, memFiltro = 'ativos';
+var FILTROS_MEMBROS = {ativos:'Ativos', ex:'Inativos', todos:'Todos'}, memFiltro = 'ativos';
 var MESES_CURTOS = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 function diasEntre(a, b){ var x = a.split('-').map(Number), y = b.split('-').map(Number); return Math.round((Date.UTC(y[0], y[1] - 1, y[2]) - Date.UTC(x[0], x[1] - 1, x[2])) / 864e5); }
 function diasMembro(m){ var h = hojeISO(); return m.per.reduce(function(n, p){ return n + Math.max(0, diasEntre(p.de, p.ate || h)); }, 0); }
@@ -1311,7 +1317,7 @@ function folhaMembros(){
   var cont = {ativos:ms.filter(function(x){ return x.at; }).length, ex:ms.filter(function(x){ return !x.at; }).length, todos:ms.length};
   var lista = ms.filter(function(x){ return memFiltro === 'todos' || x.at === (memFiltro === 'ativos'); })
     .sort(function(a, b){ return b.d - a.d || nomeMembro(a.m).localeCompare(nomeMembro(b.m), 'pt-BR'); });
-  var h = '<h3>Membros do ' + esc(S.grupo) + '</h3><div class="filtros">' + Object.keys(FILTROS_MEMBROS).map(function(k){
+  var h = '<h3>Jogadores do ' + esc(S.grupo) + '</h3><div class="filtros">' + Object.keys(FILTROS_MEMBROS).map(function(k){
     return '<button class="chip" data-a="membrosFiltro" data-v="' + k + '" aria-pressed="' + (k === memFiltro) + '">' + FILTROS_MEMBROS[k] + ' <b>' + cont[k] + '</b></button>';
   }).join('') + '</div>';
   h += lista.length ? '<ol class="rank membros">' + lista.map(function(x, i){
@@ -1319,7 +1325,7 @@ function folhaMembros(){
       '<span class="sub">' + periodoMembro(x.m) + '</span></span><span class="g">' + esc(tempoMembro(x.d, true)) + '</span>';
     return adm ? '<li class="cl"><button class="linha-bt" data-a="editarMembro" data-m="' + esc(x.m.id) + '">' + miolo + '</button></li>' : '<li>' + miolo + '</li>';
   }).join('') + '</ol>' : '<p class="mudo">Ninguém aqui.</p>';
-  if (adm) h += '<button class="btn bloco" data-a="novoMembro">' + ICON.mao + 'Adicionar membro</button>';
+  if (adm) h += '<button class="btn bloco" data-a="novoMembro">' + ICON.mao + 'Adicionar jogador</button>';
   openSheet(h + '<button class="btn bloco" data-a="fechar">Fechar</button>');
 }
 function linhaPeriodo(p){
@@ -1332,14 +1338,14 @@ function folhaMembro(m){
   var opts = '<option value="">Não está no Elenco</option>' + ordenar(S.jogadores).map(function(p){
     return '<option value="' + esc(p.id) + '"' + (p.id === m.jog ? ' selected' : '') + '>' + esc(p.nome) + (p.avulso ? ' (avulso)' : '') + '</option>';
   }).join('');
-  openSheet('<h3>' + (novo ? 'Novo membro' : esc(nomeMembro(m))) + '</h3>' + (m.wa && m.wa !== m.nome ? '<p class="mudo">No WhatsApp: ' + esc(m.wa) + '</p>' : '') +
+  openSheet('<h3>' + (novo ? 'Novo jogador' : esc(nomeMembro(m))) + '</h3>' + (m.wa && m.wa !== m.nome ? '<p class="mudo">No WhatsApp: ' + esc(m.wa) + '</p>' : '') +
     '<form class="col-btns" data-f="membro" data-m="' + esc(m.id) + '">' +
     '<label class="rot" for="mNome">Nome</label><input type="text" id="mNome" maxlength="40" value="' + esc(m.nome) + '" autocomplete="off">' +
     '<label class="rot" for="mJog">Jogador do Elenco</label><select id="mJog">' + opts + '</select>' +
     '<div id="mPers" class="col-btns">' + m.per.map(linhaPeriodo).join('') + '</div>' +
     '<button type="button" class="btn" data-a="memPeriodo">' + ICON.mao + 'Voltou outra vez</button>' +
     '<button class="btn prim bloco">Salvar</button></form>' +
-    (novo ? '' : '<button class="btn perigo bloco" data-a="apagarMembro" data-m="' + esc(m.id) + '">Apagar membro</button>') +
+    (novo ? '' : '<button class="btn perigo bloco" data-a="apagarMembro" data-m="' + esc(m.id) + '">Apagar jogador</button>') +
     '<button class="btn bloco" data-a="verMembros">Voltar</button>');
 }
 
@@ -1761,11 +1767,11 @@ var A = {
   memPeriodo: function(){ var c = $('#mPers'); if (c) c.insertAdjacentHTML('beforeend', linhaPeriodo({de:'', ate:''})); },
   apagarMembro: function(b){
     var m = membroPor(b.dataset.m); if (!m) return;
-    confirmar('Apagar ' + nomeMembro(m) + '?', 'Sai da lista de membros do grupo.', 'confApagarMembro', 'Apagar', ' data-m="' + esc(m.id) + '"');
+    confirmar('Apagar ' + nomeMembro(m) + '?', 'Sai da lista de jogadores do Futebas.', 'confApagarMembro', 'Apagar', ' data-m="' + esc(m.id) + '"');
   },
   confApagarMembro: function(b){
     S.sobre.membros = S.sobre.membros.filter(function(m){ return m.id !== b.dataset.m; });
-    commit(); folhaMembros(); toast('Membro apagado');
+    commit(); folhaMembros(); toast('Jogador apagado');
   }
 };
 /* Convidado do dia passa para o elenco, como mensalista ou avulso */
