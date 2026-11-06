@@ -270,6 +270,9 @@ select{appearance:auto}
 .membros .quem{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0}
 .membros .sub{font-size:13px;color:var(--muted)}
 .membros .g{font-size:17px;white-space:nowrap}
+.dest-larga{grid-column:1/-1}
+.rank.campos li:not(.cl),.rank.campos .linha-bt{grid-template-columns:1fr auto}
+.selo-atual{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--accent);margin-left:4px}
 .per-linha{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .per-linha label{display:flex;flex-direction:column;gap:4px;min-width:0}
 .per-linha input{min-width:0;width:100%}
@@ -398,7 +401,7 @@ function sobrePadrao(){
   return {criado:'2024-04-08', cidade:'Piracicaba (SP)', uniformes:[
     {id:'u1', num:1, temporada:2025, quando:'2025-05', situacao:'pronto', obs:'', pessoas:pessoas},
     {id:'u2', num:2, temporada:2026, quando:'', situacao:'decisao', obs:'', pessoas:[]}
-  ], membros:[], correcoes:[]};
+  ], membros:[], campos:[], correcoes:[]};
 }
 function ajustarSobre(st){
   var s = st.sobre;
@@ -417,15 +420,22 @@ function ajustarSobre(st){
   /* Membros do grupo do WhatsApp: per = vezes em que esteve no grupo ({de, ate}; ate vazio = ainda está) */
   var DATA = /^\d{4}-\d{2}-\d{2}$/;
   s.membros = (Array.isArray(s.membros) ? s.membros : []).filter(function(m){ return m && m.id; });
+  function limparPer(per){
+    return (Array.isArray(per) ? per : []).filter(function(p){ return p && DATA.test(p.de); })
+      .map(function(p){ return {de:p.de, ate:DATA.test(p.ate) && p.ate >= p.de ? p.ate : ''}; })
+      .sort(function(a, b){ return a.de < b.de ? -1 : a.de > b.de ? 1 : 0; });
+  }
   s.membros.forEach(function(m){
     if (typeof m.nome !== 'string') m.nome = '';
     if (typeof m.wa !== 'string') m.wa = '';
     if (typeof m.jog !== 'string') m.jog = '';
-    m.per = (Array.isArray(m.per) ? m.per : []).filter(function(p){ return p && DATA.test(p.de); })
-      .map(function(p){ return {de:p.de, ate:DATA.test(p.ate) && p.ate >= p.de ? p.ate : ''}; })
-      .sort(function(a, b){ return a.de < b.de ? -1 : a.de > b.de ? 1 : 0; });
+    m.per = limparPer(m.per);
   });
   s.membros = s.membros.filter(function(m){ return m.per.length; });
+  /* Campos onde o Futebas já jogou: per = vezes em que jogamos lá ({de, ate}; ate vazio = é o campo de agora) */
+  s.campos = (Array.isArray(s.campos) ? s.campos : []).filter(function(c){ return c && c.id && typeof c.nome === 'string' && c.nome; });
+  s.campos.forEach(function(c){ if (typeof c.local !== 'string') c.local = ''; c.per = limparPer(c.per); });
+  s.campos = s.campos.filter(function(c){ return c.per.length; });
   if (!Array.isArray(s.correcoes)) s.correcoes = [];
   corrigirMembros(s, st);
 }
@@ -1116,14 +1126,14 @@ function vFutebas(){
   var s = S.sobre, tempo = tempoDesde(s.criado);
   var todosDias = S.historico.concat(S.dia.jogos.length ? [S.dia] : []).filter(function(d){ return d.jogos.length; });
   var todosJogos = todosDias.reduce(function(a, d){ return a.concat(d.jogos); }, []);
-  var gols = todosJogos.reduce(function(n, j){ return n + j.gols.length; }, 0);
   var h = '<section class="card capa"><img class="escudo-g" src="' + srcEscudo() + '" alt="Escudo do Futebas" width="130" height="144"><h2>' + esc(S.grupo) + '</h2>' +
     (s.criado ? '<p><b>Desde ' + esc(fmtDataCompleta(s.criado)) + '</b>' + (s.cidade ? ' · ' + esc(s.cidade) : '') + '</p>' : (s.cidade ? '<p>' + esc(s.cidade) + '</p>' : '')) +
     (tempo ? '<p class="mudo">' + esc(tempo) + ' de bola rolando</p>' : '') +
     (visitante() ? '' : '<button class="btn-link" style="align-self:center" data-a="editarGrupo">Editar data e cidade</button>') + '</section>';
+  var temCampos = s.campos.length || !visitante();
   h += '<div class="destaques">' +
-    '<button class="dest dest-bt" data-a="verMembros"><span class="rot">Jogadores</span><span class="v">' + s.membros.filter(membroAtivo).length + '</span><span class="s">Ver a lista ›</span></button>' +
-    '<div class="dest"><span class="rot">No app</span><span class="v">' + pl(todosDias.length, 'dia', 'dias') + '</span><span class="s">' + pl(todosJogos.length, 'jogo', 'jogos') + ' · ' + pl(gols, 'gol', 'gols') + '</span></div>';
+    '<button class="dest dest-bt' + (temCampos ? '' : ' dest-larga') + '" data-a="verMembros"><span class="rot">Jogadores</span><span class="v">' + s.membros.filter(membroAtivo).length + '</span><span class="s">Ver a lista ›</span></button>' +
+    (temCampos ? '<button class="dest dest-bt" data-a="verCampos"><span class="rot">Campos</span><span class="v">' + (s.campos.length || '–') + '</span><span class="s">' + (s.campos.length ? 'Ver a lista ›' : 'Adicionar ›') + '</span></button>' : '');
   h += '</div>';
   var us = s.uniformes.slice().sort(function(a, b){ return b.temporada - a.temporada || b.num - a.num; });
   h += '<section class="bloco-f"><div class="rot">Uniformes</div>' + us.map(vUniforme).join('') +
@@ -1328,10 +1338,11 @@ function folhaMembros(){
   if (adm) h += '<button class="btn bloco" data-a="novoMembro">' + ICON.mao + 'Adicionar jogador</button>';
   openSheet(h + '<button class="btn bloco" data-a="fechar">Fechar</button>');
 }
-function linhaPeriodo(p){
-  return '<div class="per-linha"><label><span class="rot">Entrou</span><input type="date" class="pDe" value="' + esc(p.de) + '"></label>' +
-    '<label><span class="rot">Saiu</span><input type="date" class="pAte" value="' + esc(p.ate) + '"></label></div>';
+function linhaPeriodo(p, rotDe, rotAte){
+  return '<div class="per-linha"><label><span class="rot">' + (rotDe || 'Entrou') + '</span><input type="date" class="pDe" value="' + esc(p.de) + '"></label>' +
+    '<label><span class="rot">' + (rotAte || 'Saiu') + '</span><input type="date" class="pAte" value="' + esc(p.ate) + '"></label></div>';
 }
+function linhaPeriodoCampo(p){ return linhaPeriodo(p, 'Começamos', 'Paramos'); }
 function folhaMembro(m){
   var novo = !m;
   m = m || {id:'', nome:'', wa:'', jog:'', per:[{de:'', ate:''}]};
@@ -1342,11 +1353,41 @@ function folhaMembro(m){
     '<form class="col-btns" data-f="membro" data-m="' + esc(m.id) + '">' +
     '<label class="rot" for="mNome">Nome</label><input type="text" id="mNome" maxlength="40" value="' + esc(m.nome) + '" autocomplete="off">' +
     '<label class="rot" for="mJog">Jogador do Elenco</label><select id="mJog">' + opts + '</select>' +
-    '<div id="mPers" class="col-btns">' + m.per.map(linhaPeriodo).join('') + '</div>' +
+    '<div id="mPers" class="col-btns">' + m.per.map(function(p){ return linhaPeriodo(p); }).join('') + '</div>' +
     '<button type="button" class="btn" data-a="memPeriodo">' + ICON.mao + 'Voltou outra vez</button>' +
     '<button class="btn prim bloco">Salvar</button></form>' +
     (novo ? '' : '<button class="btn perigo bloco" data-a="apagarMembro" data-m="' + esc(m.id) + '">Apagar jogador</button>') +
     '<button class="btn bloco" data-a="verMembros">Voltar</button>');
+}
+
+/* ---------- campos onde o Futebas já jogou ---------- */
+function campoPor(id){ return S.sobre.campos.filter(function(c){ return c.id === id; })[0]; }
+function folhaCampos(){
+  var adm = !visitante();
+  /* o campo de agora em cima; depois do mais recente para o mais antigo */
+  var fim = function(c){ var u = c.per[c.per.length - 1]; return u.ate || '9999'; };
+  var lista = S.sobre.campos.slice().sort(function(a, b){ return fim(a) < fim(b) ? 1 : fim(a) > fim(b) ? -1 : 0; });
+  var h = '<h3>Campos do ' + esc(S.grupo) + '</h3>';
+  h += lista.length ? '<ol class="rank membros campos">' + lista.map(function(c){
+    var miolo = '<span class="quem"><span class="nm">' + esc(c.nome) + (membroAtivo(c) ? ' <span class="selo-atual">atual</span>' : '') + '</span>' +
+      '<span class="sub">' + (c.local ? esc(c.local) + ' · ' : '') + periodoMembro(c) + '</span></span><span class="g">' + esc(tempoMembro(diasMembro(c), true)) + '</span>';
+    return adm ? '<li class="cl"><button class="linha-bt" data-a="editarCampo" data-c="' + esc(c.id) + '">' + miolo + '</button></li>' : '<li>' + miolo + '</li>';
+  }).join('') + '</ol>' : '<p class="mudo">Nenhum campo ainda.</p>';
+  if (adm) h += '<button class="btn bloco" data-a="novoCampo">' + ICON.mao + 'Adicionar campo</button>';
+  openSheet(h + '<button class="btn bloco" data-a="fechar">Fechar</button>');
+}
+function folhaCampo(c){
+  var novo = !c;
+  c = c || {id:'', nome:'', local:'', per:[{de:'', ate:''}]};
+  openSheet('<h3>' + (novo ? 'Novo campo' : esc(c.nome)) + '</h3>' +
+    '<form class="col-btns" data-f="campo" data-c="' + esc(c.id) + '">' +
+    '<label class="rot" for="cNome">Nome do campo</label><input type="text" id="cNome" maxlength="40" value="' + esc(c.nome) + '" autocomplete="off">' +
+    '<label class="rot" for="cLocal">Bairro ou cidade (se quiser)</label><input type="text" id="cLocal" maxlength="40" value="' + esc(c.local) + '" autocomplete="off">' +
+    '<div id="cPers" class="col-btns">' + c.per.map(linhaPeriodoCampo).join('') + '</div>' +
+    '<button type="button" class="btn" data-a="campoPeriodo">' + ICON.mao + 'Voltamos a jogar lá</button>' +
+    '<button class="btn prim bloco">Salvar</button></form>' +
+    (novo ? '' : '<button class="btn perigo bloco" data-a="apagarCampo" data-c="' + esc(c.id) + '">Apagar campo</button>') +
+    '<button class="btn bloco" data-a="verCampos">Voltar</button>');
 }
 
 /* Abas de cada modo: o visitante não vê Jogo nem Times e tem a aba Sortear (sorteio que não salva nada) */
@@ -1772,6 +1813,18 @@ var A = {
   confApagarMembro: function(b){
     S.sobre.membros = S.sobre.membros.filter(function(m){ return m.id !== b.dataset.m; });
     commit(); folhaMembros(); toast('Jogador apagado');
+  },
+  verCampos: function(){ if (!S.sobre.campos.length && !visitante()) folhaCampo(null); else folhaCampos(); },
+  editarCampo: function(b){ var c = campoPor(b.dataset.c); if (c) folhaCampo(c); },
+  novoCampo: function(){ folhaCampo(null); },
+  campoPeriodo: function(){ var c = $('#cPers'); if (c) c.insertAdjacentHTML('beforeend', linhaPeriodoCampo({de:'', ate:''})); },
+  apagarCampo: function(b){
+    var c = campoPor(b.dataset.c); if (!c) return;
+    confirmar('Apagar ' + c.nome + '?', 'Sai da lista de campos.', 'confApagarCampo', 'Apagar', ' data-c="' + esc(c.id) + '"');
+  },
+  confApagarCampo: function(b){
+    S.sobre.campos = S.sobre.campos.filter(function(c){ return c.id !== b.dataset.c; });
+    commit(); folhaCampos(); toast('Campo apagado');
   }
 };
 /* Convidado do dia passa para o elenco, como mensalista ou avulso */
@@ -1786,7 +1839,7 @@ function virarMensalistas(ids, avulso){
 }
 
 /* O que o visitante (e a tela de entrada) pode tocar. Qualquer outra ação é ignorada: o visitante só vê. */
-var LIVRES_VISITANTE = ['tema','aba','fechar','statPer','statOrd','verEstat','verUnif','filtroRank','mes','conta','verMembros','membrosFiltro',
+var LIVRES_VISITANTE = ['tema','aba','fechar','statPer','statOrd','verEstat','verUnif','filtroRank','mes','conta','verMembros','membrosFiltro','verCampos',
   'entrarAdmin','voltarInicio','sair','vsAtualizar','vsTodos','vsQtd','vsSortear','vsMudar','vsCopiar'];
 var LIVRES_ENTRADA = ['tema','entrarVisitante','entrarAdmin','fechar'];
 document.addEventListener('click', function(e){
@@ -1848,6 +1901,15 @@ document.addEventListener('submit', function(e){
     if (!mm){ mm = {id:'m' + uid8(), nome:'', wa:'', jog:'', per:[]}; S.sobre.membros.push(mm); }
     mm.nome = mn || (pessoa(mj) || {}).nome || ''; mm.jog = mj; mm.per = pers;
     ajustarSobre(S); commit(); folhaMembros(); toast('Salvo');
+  } else if (f.dataset.f === 'campo'){
+    var cpers = $$('#cPers .per-linha').map(function(r){ return {de:$('.pDe', r).value, ate:$('.pAte', r).value}; }).filter(function(p){ return p.de; });
+    var cn = limparNome($('#cNome').value);
+    if (!cn){ toast('Coloque o nome do campo'); return; }
+    if (!cpers.length){ toast('Coloque quando começamos'); return; }
+    var cc = campoPor(f.dataset.c);
+    if (!cc){ cc = {id:'c' + uid8(), nome:'', local:'', per:[]}; S.sobre.campos.push(cc); }
+    cc.nome = cn; cc.local = limparNome($('#cLocal').value); cc.per = cpers;
+    ajustarSobre(S); commit(); folhaCampos(); toast('Salvo');
   }
 });
 document.addEventListener('change', function(e){
