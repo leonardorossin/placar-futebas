@@ -231,7 +231,7 @@ details.dia summary::-webkit-details-marker{display:none}
 
 /* Elenco */
 .bloco-f{display:flex;flex-direction:column;gap:10px}
-input[type=text],input[type=email],input[type=password],input[type=date],textarea,select{font:500 16px var(--f-body);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;min-height:48px;width:100%}
+input[type=text],input[type=email],input[type=password],input[type=date],input[type=month],textarea,select{font:500 16px var(--f-body);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;min-height:48px;width:100%}
 textarea{min-height:160px;resize:vertical}
 select{appearance:auto}
 .linha{display:flex;gap:8px}
@@ -272,6 +272,11 @@ select{appearance:auto}
 .membros .g{font-size:17px;white-space:nowrap}
 .dest-larga{grid-column:1/-1}
 .rank.campos li:not(.cl),.rank.campos .linha-bt{grid-template-columns:1fr auto}
+.rank.campos .g{font-size:15px;color:var(--muted)}
+.rank.campos .txt-ev{white-space:pre-line}
+.rank.campos + .btn{margin-top:-4px}
+textarea.txt-curto{min-height:90px}
+.dest .v-nome{font-size:24px;line-height:1.1;overflow-wrap:anywhere}
 .selo-atual{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--accent);margin-left:4px}
 .per-linha{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .per-linha label{display:flex;flex-direction:column;gap:4px;min-width:0}
@@ -357,6 +362,7 @@ function fmtMes(mes){ var p = mes.split('-').map(Number); return new Date(p[0], 
 function somarMes(mes, delta){ var p = mes.split('-').map(Number), d = new Date(p[0], p[1]-1+delta, 1); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0'); }
 function pl(n, um, varios){ return n + ' ' + (n === 1 ? um : varios); }
 function norm(s){ return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim(); }
+function limparTexto(s, max){ return String(s || '').replace(/\s+/g, ' ').trim().slice(0, max || 50); }
 function limparNome(s){
   var t = String(s || '');
   try{ t = t.replace(/\p{Extended_Pictographic}/gu, ''); }catch(e){}
@@ -401,7 +407,7 @@ function sobrePadrao(){
   return {criado:'2024-04-08', cidade:'Piracicaba (SP)', uniformes:[
     {id:'u1', num:1, temporada:2025, quando:'2025-05', situacao:'pronto', obs:'', pessoas:pessoas},
     {id:'u2', num:2, temporada:2026, quando:'', situacao:'decisao', obs:'', pessoas:[]}
-  ], membros:[], campos:[], correcoes:[]};
+  ], membros:[], campos:[], eventos:[], correcoes:[]};
 }
 function ajustarSobre(st){
   var s = st.sobre;
@@ -436,8 +442,25 @@ function ajustarSobre(st){
   s.campos = (Array.isArray(s.campos) ? s.campos : []).filter(function(c){ return c && c.id && typeof c.nome === 'string' && c.nome; });
   s.campos.forEach(function(c){ if (typeof c.local !== 'string') c.local = ''; c.per = limparPer(c.per); });
   s.campos = s.campos.filter(function(c){ return c.per.length; });
+  /* Eventos do Futebas (aniversário, confraternização...): data = "aaaa-mm" */
+  s.eventos = (Array.isArray(s.eventos) ? s.eventos : []).filter(function(e){ return e && e.id && typeof e.nome === 'string' && e.nome && /^\d{4}-\d{2}$/.test(e.data); });
+  s.eventos.forEach(function(e){ if (typeof e.local !== 'string') e.local = ''; if (typeof e.texto !== 'string') e.texto = ''; });
   if (!Array.isArray(s.correcoes)) s.correcoes = [];
   corrigirMembros(s, st);
+  semearArenas(s);
+}
+/* Arenas e eventos que o Leo passou em 06/11/2026. Entram uma vez (marca em s.correcoes), só nos dados de verdade do grupo. */
+function semearArenas(s){
+  if (s.correcoes.indexOf('arenas-1') >= 0 || !s.membros.length) return;
+  var tem = function(lista, nome){ return lista.some(function(x){ return norm(x.nome) === norm(nome); }); };
+  [{nome:'Bom de Bola', per:[{de:'2024-04-08', ate:'2025-08-01'}]}, {nome:'Bola1', per:[{de:'2025-08-01', ate:''}]}].forEach(function(c){
+    if (!tem(s.campos, c.nome)) s.campos.push({id:'c' + uid8(), nome:c.nome, local:'', per:c.per});
+  });
+  [{nome:'1 Ano Futebas', data:'2025-05'}, {nome:'Confraternização 2025', data:'2026-01'}].forEach(function(e){
+    if (!tem(s.eventos, e.nome)) s.eventos.push({id:'e' + uid8(), nome:e.nome, data:e.data, local:'', texto:''});
+  });
+  s.correcoes.push('arenas-1');
+  corrigiuAgora = true;
 }
 /* Correções pedidas pelo Leo em 05/11/2026 na lista importada (nomes e quem sai; null = tira). Cada uma roda uma vez (marca em s.correcoes).
    Não mexe no atualizadoEm aqui: só depois de sincronizar, em cima dos dados mais novos, o administrador salva e manda. */
@@ -1130,10 +1153,12 @@ function vFutebas(){
     (s.criado ? '<p><b>Desde ' + esc(fmtDataCompleta(s.criado)) + '</b>' + (s.cidade ? ' · ' + esc(s.cidade) : '') + '</p>' : (s.cidade ? '<p>' + esc(s.cidade) + '</p>' : '')) +
     (tempo ? '<p class="mudo">' + esc(tempo) + ' de bola rolando</p>' : '') +
     (visitante() ? '' : '<button class="btn-link" style="align-self:center" data-a="editarGrupo">Editar data e cidade</button>') + '</section>';
-  var temCampos = s.campos.length || !visitante();
+  var temCampos = s.campos.length || s.eventos.length || !visitante();
+  var arenaAgora = s.campos.filter(membroAtivo)[0];
   h += '<div class="destaques">' +
     '<button class="dest dest-bt' + (temCampos ? '' : ' dest-larga') + '" data-a="verMembros"><span class="rot">Jogadores</span><span class="v">' + s.membros.filter(membroAtivo).length + '</span><span class="s">Ver a lista ›</span></button>' +
-    (temCampos ? '<button class="dest dest-bt" data-a="verCampos"><span class="rot">Campos</span><span class="v">' + (s.campos.length || '–') + '</span><span class="s">' + (s.campos.length ? 'Ver a lista ›' : 'Adicionar ›') + '</span></button>' : '');
+    (temCampos ? '<button class="dest dest-bt" data-a="verCampos"><span class="rot">Arenas e eventos</span><span class="v v-nome">' + (arenaAgora ? esc(arenaAgora.nome) : '–') + '</span><span class="s">' +
+      (s.campos.length || s.eventos.length ? pl(s.campos.length, 'arena', 'arenas') + ' · ' + pl(s.eventos.length, 'evento', 'eventos') + ' ›' : 'Adicionar ›') + '</span></button>' : '');
   h += '</div>';
   var us = s.uniformes.slice().sort(function(a, b){ return b.temporada - a.temporada || b.num - a.num; });
   h += '<section class="bloco-f"><div class="rot">Uniformes</div>' + us.map(vUniforme).join('') +
@@ -1360,33 +1385,55 @@ function folhaMembro(m){
     '<button class="btn bloco" data-a="verMembros">Voltar</button>');
 }
 
-/* ---------- campos onde o Futebas já jogou ---------- */
+/* ---------- arenas (s.campos) e eventos do Futebas ---------- */
 function campoPor(id){ return S.sobre.campos.filter(function(c){ return c.id === id; })[0]; }
+function eventoPor(id){ return S.sobre.eventos.filter(function(e){ return e.id === id; })[0]; }
 function folhaCampos(){
   var adm = !visitante();
-  /* o campo de agora em cima; depois do mais recente para o mais antigo */
+  /* a arena de agora em cima; depois da mais recente para a mais antiga */
   var fim = function(c){ var u = c.per[c.per.length - 1]; return u.ate || '9999'; };
   var lista = S.sobre.campos.slice().sort(function(a, b){ return fim(a) < fim(b) ? 1 : fim(a) > fim(b) ? -1 : 0; });
-  var h = '<h3>Campos do ' + esc(S.grupo) + '</h3>';
+  var evs = S.sobre.eventos.slice().sort(function(a, b){ return a.data < b.data ? 1 : a.data > b.data ? -1 : 0; });
+  var h = '<h3>Arenas e eventos</h3><div class="rot">Arenas</div>';
   h += lista.length ? '<ol class="rank membros campos">' + lista.map(function(c){
     var miolo = '<span class="quem"><span class="nm">' + esc(c.nome) + (membroAtivo(c) ? ' <span class="selo-atual">atual</span>' : '') + '</span>' +
       '<span class="sub">' + (c.local ? esc(c.local) + ' · ' : '') + periodoMembro(c) + '</span></span><span class="g">' + esc(tempoMembro(diasMembro(c), true)) + '</span>';
     return adm ? '<li class="cl"><button class="linha-bt" data-a="editarCampo" data-c="' + esc(c.id) + '">' + miolo + '</button></li>' : '<li>' + miolo + '</li>';
-  }).join('') + '</ol>' : '<p class="mudo">Nenhum campo ainda.</p>';
-  if (adm) h += '<button class="btn bloco" data-a="novoCampo">' + ICON.mao + 'Adicionar campo</button>';
+  }).join('') + '</ol>' : '<p class="mudo">Nenhuma arena ainda.</p>';
+  if (adm) h += '<button class="btn bloco" data-a="novoCampo">' + ICON.mao + 'Adicionar arena</button>';
+  h += '<div class="rot">Eventos</div>';
+  h += evs.length ? '<ol class="rank membros campos">' + evs.map(function(e){
+    var miolo = '<span class="quem"><span class="nm">' + esc(e.nome) + '</span>' + (e.local ? '<span class="sub">' + esc(e.local) + '</span>' : '') +
+      (e.texto ? '<span class="sub txt-ev">' + esc(e.texto) + '</span>' : '') + '</span><span class="g">' + mesAno(e.data + '-01') + '</span>';
+    return adm ? '<li class="cl"><button class="linha-bt" data-a="editarEvento" data-e="' + esc(e.id) + '">' + miolo + '</button></li>' : '<li>' + miolo + '</li>';
+  }).join('') + '</ol>' : '<p class="mudo">Nenhum evento ainda.</p>';
+  if (adm) h += '<button class="btn bloco" data-a="novoEvento">' + ICON.mao + 'Adicionar evento</button>';
   openSheet(h + '<button class="btn bloco" data-a="fechar">Fechar</button>');
+}
+function folhaEvento(e){
+  var novo = !e;
+  e = e || {id:'', nome:'', data:'', local:'', texto:''};
+  openSheet('<h3>' + (novo ? 'Novo evento' : esc(e.nome)) + '</h3>' +
+    '<form class="col-btns" data-f="evento" data-e="' + esc(e.id) + '">' +
+    '<label class="rot" for="eNome">Nome do evento</label><input type="text" id="eNome" maxlength="50" value="' + esc(e.nome) + '" autocomplete="off">' +
+    '<label class="rot" for="eData">Quando (mês e ano)</label><input type="month" id="eData" value="' + esc(e.data) + '">' +
+    '<label class="rot" for="eLocal">Onde (se quiser)</label><input type="text" id="eLocal" maxlength="50" value="' + esc(e.local) + '" autocomplete="off">' +
+    '<label class="rot" for="eTexto">Como foi (se quiser)</label><textarea id="eTexto" class="txt-curto" maxlength="300">' + esc(e.texto) + '</textarea>' +
+    '<button class="btn prim bloco">Salvar</button></form>' +
+    (novo ? '' : '<button class="btn perigo bloco" data-a="apagarEvento" data-e="' + esc(e.id) + '">Apagar evento</button>') +
+    '<button class="btn bloco" data-a="verCampos">Voltar</button>');
 }
 function folhaCampo(c){
   var novo = !c;
   c = c || {id:'', nome:'', local:'', per:[{de:'', ate:''}]};
-  openSheet('<h3>' + (novo ? 'Novo campo' : esc(c.nome)) + '</h3>' +
+  openSheet('<h3>' + (novo ? 'Nova arena' : esc(c.nome)) + '</h3>' +
     '<form class="col-btns" data-f="campo" data-c="' + esc(c.id) + '">' +
-    '<label class="rot" for="cNome">Nome do campo</label><input type="text" id="cNome" maxlength="40" value="' + esc(c.nome) + '" autocomplete="off">' +
+    '<label class="rot" for="cNome">Nome da arena</label><input type="text" id="cNome" maxlength="40" value="' + esc(c.nome) + '" autocomplete="off">' +
     '<label class="rot" for="cLocal">Bairro ou cidade (se quiser)</label><input type="text" id="cLocal" maxlength="40" value="' + esc(c.local) + '" autocomplete="off">' +
     '<div id="cPers" class="col-btns">' + c.per.map(linhaPeriodoCampo).join('') + '</div>' +
     '<button type="button" class="btn" data-a="campoPeriodo">' + ICON.mao + 'Voltamos a jogar lá</button>' +
     '<button class="btn prim bloco">Salvar</button></form>' +
-    (novo ? '' : '<button class="btn perigo bloco" data-a="apagarCampo" data-c="' + esc(c.id) + '">Apagar campo</button>') +
+    (novo ? '' : '<button class="btn perigo bloco" data-a="apagarCampo" data-c="' + esc(c.id) + '">Apagar arena</button>') +
     '<button class="btn bloco" data-a="verCampos">Voltar</button>');
 }
 
@@ -1814,17 +1861,27 @@ var A = {
     S.sobre.membros = S.sobre.membros.filter(function(m){ return m.id !== b.dataset.m; });
     commit(); folhaMembros(); toast('Jogador apagado');
   },
-  verCampos: function(){ if (!S.sobre.campos.length && !visitante()) folhaCampo(null); else folhaCampos(); },
+  verCampos: function(){ folhaCampos(); },
+  editarEvento: function(b){ var e = eventoPor(b.dataset.e); if (e) folhaEvento(e); },
+  novoEvento: function(){ folhaEvento(null); },
+  apagarEvento: function(b){
+    var e = eventoPor(b.dataset.e); if (!e) return;
+    confirmar('Apagar ' + e.nome + '?', 'Sai da lista de eventos.', 'confApagarEvento', 'Apagar', ' data-e="' + esc(e.id) + '"');
+  },
+  confApagarEvento: function(b){
+    S.sobre.eventos = S.sobre.eventos.filter(function(e){ return e.id !== b.dataset.e; });
+    commit(); folhaCampos(); toast('Evento apagado');
+  },
   editarCampo: function(b){ var c = campoPor(b.dataset.c); if (c) folhaCampo(c); },
   novoCampo: function(){ folhaCampo(null); },
   campoPeriodo: function(){ var c = $('#cPers'); if (c) c.insertAdjacentHTML('beforeend', linhaPeriodoCampo({de:'', ate:''})); },
   apagarCampo: function(b){
     var c = campoPor(b.dataset.c); if (!c) return;
-    confirmar('Apagar ' + c.nome + '?', 'Sai da lista de campos.', 'confApagarCampo', 'Apagar', ' data-c="' + esc(c.id) + '"');
+    confirmar('Apagar ' + c.nome + '?', 'Sai da lista de arenas.', 'confApagarCampo', 'Apagar', ' data-c="' + esc(c.id) + '"');
   },
   confApagarCampo: function(b){
     S.sobre.campos = S.sobre.campos.filter(function(c){ return c.id !== b.dataset.c; });
-    commit(); folhaCampos(); toast('Campo apagado');
+    commit(); folhaCampos(); toast('Arena apagada');
   }
 };
 /* Convidado do dia passa para o elenco, como mensalista ou avulso */
@@ -1903,12 +1960,20 @@ document.addEventListener('submit', function(e){
     ajustarSobre(S); commit(); folhaMembros(); toast('Salvo');
   } else if (f.dataset.f === 'campo'){
     var cpers = $$('#cPers .per-linha').map(function(r){ return {de:$('.pDe', r).value, ate:$('.pAte', r).value}; }).filter(function(p){ return p.de; });
-    var cn = limparNome($('#cNome').value);
-    if (!cn){ toast('Coloque o nome do campo'); return; }
+    var cn = limparTexto($('#cNome').value, 40);
+    if (!cn){ toast('Coloque o nome da arena'); return; }
     if (!cpers.length){ toast('Coloque quando começamos'); return; }
     var cc = campoPor(f.dataset.c);
     if (!cc){ cc = {id:'c' + uid8(), nome:'', local:'', per:[]}; S.sobre.campos.push(cc); }
-    cc.nome = cn; cc.local = limparNome($('#cLocal').value); cc.per = cpers;
+    cc.nome = cn; cc.local = limparTexto($('#cLocal').value, 40); cc.per = cpers;
+    ajustarSobre(S); commit(); folhaCampos(); toast('Salvo');
+  } else if (f.dataset.f === 'evento'){
+    var en = limparTexto($('#eNome').value), ed = $('#eData').value;
+    if (!en){ toast('Coloque o nome do evento'); return; }
+    if (!/^\d{4}-\d{2}$/.test(ed)){ toast('Coloque o mês e o ano'); return; }
+    var ee = eventoPor(f.dataset.e);
+    if (!ee){ ee = {id:'e' + uid8()}; S.sobre.eventos.push(ee); }
+    ee.nome = en; ee.data = ed; ee.local = limparTexto($('#eLocal').value); ee.texto = $('#eTexto').value.trim().slice(0, 300);
     ajustarSobre(S); commit(); folhaCampos(); toast('Salvo');
   }
 });
